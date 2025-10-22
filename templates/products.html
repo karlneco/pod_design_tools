@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shopify Products</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    .grid { display:grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start; }
+    .card { padding: 1rem; border: 1px solid #eee; border-radius: 10px; margin-bottom: 1rem; }
+    .tags span{ background:#eef; padding:0.2rem 0.5rem; border-radius:999px; margin-right:0.25rem; }
+    .variants { font-size: 0.9em; color:#555; }
+    header { display:flex; justify-content:space-between; align-items:center; }
+  </style>
+</head>
+<body class="container">
+  <header>
+    <h1>Shopify Products</h1>
+    <nav>
+      <a href="/">Dashboard</a>
+      <button id="updateBtn">Update Cache</button>
+    </nav>
+  </header>
+
+  {% if not products %}
+    <p>No cached products yet. Click <b>Update Cache</b> to download from Shopify.</p>
+  {% endif %}
+
+  <main>
+  {% for p in products %}
+    <article class="card">
+      <div class="grid">
+        <div>
+          {% if p.primary_image %}
+            <a href="{{ p.url }}" target="_blank"><img src="{{ p.primary_image }}" alt="{{ p.title }} image" style="max-width: 200px; height: auto; border-radius:8px;" /></a>
+          {% else %}
+            <div style="width:200px;height:200px;background:#f3f3f3;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;">No image</div>
+          {% endif %}
+        </div>
+        <div>
+          <h3><a href="{{ p.url }}" target="_blank">{{ p.title }}</a></h3>
+          {% if p.type %}<p><b>Type:</b> {{ p.type }}</p>{% endif %}
+          {% if p.description %}
+            <p>{{ p.description | striptags | truncate(240, True, '…') }}</p>
+          {% endif %}
+          {% if p.tags %}
+            <p class="tags">{% for t in p.tags %}<span>{{ t }}</span>{% endfor %}</p>
+          {% endif %}
+          {% if p.variants %}
+            <p class="variants"><b>Variants:</b>
+            {% for v in p.variants %}
+              <span>{{ v.color or '—' }} / {{ v.size or '—' }}</span>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+  </main>
+
+<script>
+  document.getElementById('updateBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('updateBtn');
+    btn.setAttribute('aria-busy','true');
+    try{
+      const res = await fetch('/api/products/cache/update', {method:'POST'});
+      await res.json();
+      location.reload();
+    }catch(e){ alert('Failed to update cache'); }
+  });
+</script>
+</body>
+</html>

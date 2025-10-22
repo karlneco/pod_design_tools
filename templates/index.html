@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kozakura POD Manager</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    img.thumb { max-width: 100%; height: auto; border-radius: 8px; }
+    .tag { background:#eef; padding:0.25rem 0.5rem; border-radius:999px; margin-right:0.25rem; }
+    nav a { margin-right: 1rem; }
+  </style>
+</head>
+<body class="container">
+  <h1>Kozakura POD Manager</h1>
+
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/products">Shopify Products</a>
+  </nav>
+
+  <section>
+    <h3>Create Design</h3>
+    <form id="createDesignForm">
+      <div class="grid">
+        <input name="slug" placeholder="slug (unique)" required />
+        <input name="title" placeholder="Working title" required />
+        <input name="design_png_path" placeholder="/absolute/or/relative/path/to/design.png" required />
+        <input name="collections" placeholder="collections (comma-separated)" />
+        <input name="tags" placeholder="initial tags (comma-separated)" />
+      </div>
+      <textarea name="notes" placeholder="Notes"></textarea>
+      <button type="submit">Add</button>
+    </form>
+  </section>
+
+  <hr />
+  <section>
+    <h3>Designs</h3>
+    <div id="designs"></div>
+  </section>
+
+<script>
+async function fetchDesigns(){
+  const res = await fetch('/api/designs');
+  const data = await res.json();
+  const wrap = document.getElementById('designs');
+  wrap.innerHTML = '';
+  data.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'grid';
+    div.innerHTML = `
+      <article>
+        <h4>${d.title} <small class="mono">(${d.slug})</small></h4>
+        <p><span class="tag">mockups: ${d.status.mockups_generated}</span>
+           <span class="tag">printify: ${d.status.product_created_printify}</span>
+           <span class="tag">shopify: ${d.status.published_shopify}</span></p>
+        <p><b>PNG:</b> ${d.design_png_path}</p>
+        <p><b>Collections:</b> ${(d.collections||[]).join(', ')}</p>
+        <p><b>Tags:</b> ${(d.tags||[]).join(', ')}</p>
+        <button onclick="runMeta('${d.slug}')">AI: Metadata</button>
+        <button onclick="runColors('${d.slug}')">AI: Colors</button>
+        <button onclick="genMockups('${d.slug}')">Generate Mockups</button>
+      </article>
+      <article>
+        <h5>Generated</h5>
+        <p><b>Title:</b> ${d.generated?.title||''}</p>
+        <p><b>Description:</b> ${d.generated?.description||''}</p>
+        <p><b>Keywords:</b> ${(d.generated?.keywords||[]).join(', ')}</p>
+        <p><b>Colors:</b> ${(d.generated?.colors||[]).map(c=>c.name||c).join(', ')}</p>
+        <div>${(d.assets?.mockups||[]).map(p=>`<img class='thumb' src='/mockups/${p.split('/').slice(-2).join('/')}' />`).join('')}</div>
+      </article>
+    `;
+    wrap.appendChild(div);
+  })
+}
+
+async function runMeta(slug){
+  await fetch(`/api/designs/${slug}/ai/metadata`, {method:'POST'});
+  fetchDesigns();
+}
+async function runColors(slug){
+  await fetch(`/api/designs/${slug}/ai/colors`, {method:'POST'});
+  fetchDesigns();
+}
+async function genMockups(slug){
+  const config = {
+    templates: ['assets/mockups/flatlay_white_tee.png'],
+    placements: { center: { x: 900, y: 1100, max_w: 2100, max_h: 2400 } },
+    scale: 1.0
+  };
+  await fetch(`/api/designs/${slug}/mockups`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(config)});
+  fetchDesigns();
+}
+
+document.getElementById('createDesignForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = Object.fromEntries(fd.entries());
+  payload.collections = (payload.collections||'').split(',').map(s=>s.trim()).filter(Boolean);
+  payload.tags = (payload.tags||'').split(',').map(s=>s.trim()).filter(Boolean);
+  await fetch('/api/designs', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  e.target.reset();
+  fetchDesigns();
+});
+
+fetchDesigns();
+</script>
+</body>
+</html>

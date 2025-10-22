@@ -1,0 +1,254 @@
+[
+  {
+    "Color": "Antique Cherry Red",
+    "Hex": "A82235"
+  },
+  {
+    "Color": "Antique Heliconia",
+    "Hex": "B92972"
+  },
+  {
+    "Color": "Antique Sapphire",
+    "Hex": "0082AE"
+  },
+  {
+    "Color": "Azalea",
+    "Hex": "EF8FBC"
+  },
+  {
+    "Color": "Black",
+    "Hex": "000000"
+  },
+  {
+    "Color": "Cardinal Red",
+    "Hex": "911A30"
+  },
+  {
+    "Color": "Carolina Blue",
+    "Hex": "7BA4DB"
+  },
+  {
+    "Color": "Charcoal",
+    "Hex": "585559"
+  },
+  {
+    "Color": "Cherry Red",
+    "Hex": "B41A29"
+  },
+  {
+    "Color": "Coral Silk",
+    "Hex": "E67376"
+  },
+  {
+    "Color": "Cornsilk",
+    "Hex": "F7EF8F"
+  },
+  {
+    "Color": "Daisy",
+    "Hex": "FED141"
+  },
+  {
+    "Color": "Dark Chocolate",
+    "Hex": "31221D"
+  },
+  {
+    "Color": "Dark Heather",
+    "Hex": "454545"
+  },
+  {
+    "Color": "Dark Heather Grey",
+    "Hex": "3A3D42"
+  },
+  {
+    "Color": "Forest Green",
+    "Hex": "223B26"
+  },
+  {
+    "Color": "Gold",
+    "Hex": "FFB81C"
+  },
+  {
+    "Color": "Graphite Heather",
+    "Hex": "797C7E"
+  },
+  {
+    "Color": "Heather Berry",
+    "Hex": "E775BF"
+  },
+  {
+    "Color": "Heather Cardinal",
+    "Hex": "B54557"
+  },
+  {
+    "Color": "Heather Galapagos Blue",
+    "Hex": "509AA0"
+  },
+  {
+    "Color": "Heather Heliconia",
+    "Hex": "FA74A6"
+  },
+  {
+    "Color": "Heather Indigo",
+    "Hex": "6A798E"
+  },
+  {
+    "Color": "Heather Irish Green",
+    "Hex": "6DEDA5"
+  },
+  {
+    "Color": "Heather Maroon",
+    "Hex": "743A4C"
+  },
+  {
+    "Color": "Heather Military Green",
+    "Hex": "828067"
+  },
+  {
+    "Color": "Heather Navy",
+    "Hex": "424753"
+  },
+  {
+    "Color": "Heather Orange",
+    "Hex": "FF8B4A"
+  },
+  {
+    "Color": "Heather Purple",
+    "Hex": "6A4398"
+  },
+  {
+    "Color": "Heather Radiant Orchid",
+    "Hex": "D58EBB"
+  },
+  {
+    "Color": "Heather Red",
+    "Hex": "E3525F"
+  },
+  {
+    "Color": "Heather Royal",
+    "Hex": "7C8CD9"
+  },
+  {
+    "Color": "Heather Sapphire",
+    "Hex": "59A1CE"
+  },
+  {
+    "Color": "Ice Grey",
+    "Hex": "D7D6D3"
+  },
+  {
+    "Color": "Indigo Blue",
+    "Hex": "476579"
+  },
+  {
+    "Color": "Iris",
+    "Hex": "6C84BB"
+  },
+  {
+    "Color": "Irish Green",
+    "Hex": "279436"
+  },
+  {
+    "Color": "Jade Dome",
+    "Hex": "19998A"
+  },
+  {
+    "Color": "Kelly Green",
+    "Hex": "009660"
+  },
+  {
+    "Color": "Kiwi",
+    "Hex": "8FA749"
+  },
+  {
+    "Color": "Light Blue",
+    "Hex": "D6E6F7"
+  },
+  {
+    "Color": "Light Pink",
+    "Hex": "FEE0EB"
+  },
+  {
+    "Color": "Lime",
+    "Hex": "9EC46C"
+  },
+  {
+    "Color": "Maroon",
+    "Hex": "642838"
+  },
+  {
+    "Color": "Metro Blue",
+    "Hex": "424A7E"
+  },
+  {
+    "Color": "Military Green",
+    "Hex": "62664C"
+  },
+  {
+    "Color": "Mint Green",
+    "Hex": "B1E0C0"
+  },
+  {
+    "Color": "Natural",
+    "Hex": "FFF6E3"
+  },
+  {
+    "Color": "Navy",
+    "Hex": "1A2237"
+  },
+  {
+    "Color": "Orange",
+    "Hex": "EA5F22"
+  },
+  {
+    "Color": "Paragon",
+    "Hex": "948794"
+  },
+  {
+    "Color": "Pistachio",
+    "Hex": "D3D590"
+  },
+  {
+    "Color": "Purple",
+    "Hex": "3C214E"
+  },
+  {
+    "Color": "Red",
+    "Hex": "C62A32"
+  },
+  {
+    "Color": "Royal",
+    "Hex": "084F97"
+  },
+  {
+    "Color": "Sage",
+    "Hex": "A4B09E"
+  },
+  {
+    "Color": "Sand",
+    "Hex": "DCD2BE"
+  },
+  {
+    "Color": "Sapphire",
+    "Hex": "0080B5"
+  },
+  {
+    "Color": "Sky",
+    "Hex": "8BCDEA"
+  },
+  {
+    "Color": "Sport Grey",
+    "Hex": "CACACA"
+  },
+  {
+    "Color": "Stone Blue",
+    "Hex": "7F909C"
+  },
+  {
+    "Color": "Tropical Blue",
+    "Hex": "0097A9"
+  },
+  {
+    "Color": "White",
+    "Hex": "FFFFFF"
+  }
+]
