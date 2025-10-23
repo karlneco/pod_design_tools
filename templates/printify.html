@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Printify Products</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    header { display:flex; justify-content:space-between; align-items:center; }
+    .grid { display:grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
+    .card { position:relative; padding: 1rem; border: 1px solid #eee; border-radius: 10px; margin-bottom: 1rem; }
+    .status-pill { position:absolute; top:10px; right:10px; padding:0.25rem 0.6rem; border-radius:999px; font-size:0.8em; }
+    .pill-published { background:#e6ffed; color:#036d19; border:1px solid #bdf2c7; }
+    .pill-unpublished { background:#fff7e6; color:#8a5a00; border:1px solid #ffe0a3; }
+    .muted { color:#666; font-size:0.9em; }
+    img.thumb { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border:1px solid #e6e6e6; }
+  </style>
+</head>
+<body class="container">
+  <header>
+    <h1>Printify Products</h1>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/products">Shopify Products</a>
+      <button id="updateBtn">Update Cache</button>
+    </nav>
+  </header>
+
+  {% if not items %}
+    <p>No cached Printify products yet. Click <b>Update Cache</b> to download.</p>
+  {% endif %}
+
+  <main>
+    {% for p in items %}
+      <article class="card">
+        <span class="status-pill {{ 'pill-published' if p.published else 'pill-unpublished' }}">{{ 'Published' if p.published else 'Unpublished' }}</span>
+        <div class="grid">
+          <div>
+            {% if p.primary_image %}
+              <img class="thumb" src="{{ p.primary_image }}" alt="{{ p.title }} image" />
+            {% else %}
+              <div style="width:140px;height:140px;background:#f3f3f3;border-radius:8px;border:1px solid #e6e6e6;"></div>
+            {% endif %}
+          </div>
+          <div>
+            <h3>{{ p.title }}</h3>
+            {% if p.shopify_url %}
+              <p><a href="{{ p.shopify_url }}" target="_blank">View on Shopify</a></p>
+            {% endif %}
+            <p class="muted">
+              {% if p.created_at %}
+                Created: {{ p.created_at }}
+              {% elif p.updated_at %}
+                Updated: {{ p.updated_at }}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </main>
+
+<script>
+  document.getElementById('updateBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('updateBtn');
+    btn.setAttribute('aria-busy','true');
+    try{
+      // Use body param or set PRINTIFY_SHOP_ID in .env
+      const res = await fetch('/api/printify/products/cache/update', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({}) // or {"shop_id":"123456"}
+      });
+      await res.json();
+      location.reload();
+    }catch(e){ alert('Failed to update cache'); }
+  });
+</script>
+</body>
+</html>

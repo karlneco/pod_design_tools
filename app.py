@@ -4,6 +4,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, render_template, redirect, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
+from datetime import datetime
 
 from storage import JsonStore
 from services.printify import PrintifyClient
@@ -26,7 +27,7 @@ DATA_DIR.mkdir(exist_ok=True)
 MOCKUPS_DIR.mkdir(exist_ok=True)
 
 store = JsonStore(DATA_DIR)
-printify = PrintifyClient(os.getenv("PRINTIFY_API_TOKEN"))
+printify = PrintifyClient(os.getenv("PRINTIFY_API_TOKEN"), None)
 shopify = ShopifyClient(
     store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"),
     admin_token=os.getenv("SHOPIFY_ADMIN_TOKEN"),
@@ -34,6 +35,16 @@ shopify = ShopifyClient(
 )
 
 PRODUCTS_COLLECTION = "shopify_products"
+PRINTIFY_PRODUCTS_COLLECTION = "printify_products"
+
+
+@app.template_filter("todatetime")
+def _todatetime(value):
+    """Convert ISO string to datetime for pretty_date macro."""
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return datetime.min
 
 
 # -----------------------------
@@ -47,7 +58,31 @@ def index():
 @app.get("/products")
 def products_page():
     products = store.list(PRODUCTS_COLLECTION)
+
+    # Sort newest first by available timestamp
+    def _ts(p):
+        t = p.get("created_at") or p.get("updated_at")
+        if not t:
+            return datetime.min
+        try:
+            return datetime.fromisoformat(t.replace("Z", "+00:00"))
+        except Exception:
+            return datetime.min
+
+    products = sorted(products, key=_ts, reverse=True)
     return render_template("products.html", products=products, store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"))
+
+
+@app.get("/printify")
+def printify_page():
+    items = store.list(PRINTIFY_PRODUCTS_COLLECTION)
+
+    # show newest first if we have dates
+    def _ts(p):
+        return p.get("updated_at") or p.get("created_at") or ""
+
+    items = sorted(items, key=_ts, reverse=True)
+    return render_template("printify.html", items=items, store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"))
 
 
 # -----------------------------
@@ -236,6 +271,11 @@ def api_list_products():
     return jsonify(store.list(PRODUCTS_COLLECTION))
 
 
+@app.get("/api/printify/products")
+def api_list_printify_products():
+    return jsonify(store.list(PRINTIFY_PRODUCTS_COLLECTION))
+
+
 @app.post("/api/products/cache/update")
 def update_products_cache():
     # Fetch all products from Shopify and normalize to our schema
@@ -249,6 +289,9 @@ def update_products_cache():
         product_type = p.get("product_type") or ""
         desc = p.get("body_html") or ""
         tags = [t.strip() for t in (p.get("tags") or "").split(",") if t.strip()]
+        status = p.get("status") or "unknown"
+        created_at = p.get("created_at")
+        updated_at = p.get("updated_at")
 
         # Primary image
         img = None
@@ -257,6 +300,12 @@ def update_products_cache():
         elif p.get("images"):
             img = p["images"][0].get("src") if p["images"] else None
 
+        # Map image_id -> src for variant thumbnails
+        images_map = {}
+        for _im in (p.get("images") or []):
+            if _im.get("id") and _im.get("src"):
+                images_map[_im["id"]] = _im["src"]
+
         # Variants (color/size detection via option names)
         option_map = {opt.get("position"): opt.get("name", "") for opt in (p.get("options") or [])}
         color_pos = next((pos for pos, name in option_map.items() if name and name.lower() in ["color", "colour"]),
@@ -264,10 +313,31 @@ def update_products_cache():
         size_pos = next((pos for pos, name in option_map.items() if name and name.lower() == "size"), None)
 
         variants = []
+        # track first thumbnail per color
+        color_image_map = {}
+
         for v in (p.get("variants") or []):
             opts = [v.get(f"option{i}") for i in range(1, 4)]
             color = opts[(color_pos - 1)] if color_pos else None
             size = opts[(size_pos - 1)] if size_pos else None
+
+            # pick image for this variant if available
+            v_image_src = None
+            v_image_id = v.get("image_id")
+            if v_image_id and v_image_id in images_map:
+                v_image_src = images_map[v_image_id]
+            else:
+                # Some payloads embed a direct URL or dict
+                vimg = v.get("image") or v.get("preview")
+                if isinstance(vimg, dict):
+                    v_image_src = vimg.get("src") or vimg.get("url")
+                elif isinstance(vimg, str):
+                    v_image_src = vimg
+
+            # remember the first image we see for each color (fallback later to primary)
+            if color and color not in color_image_map:
+                color_image_map[color] = v_image_src  # may be None for now
+
             variants.append({
                 "id": v.get("id"),
                 "title": v.get("title"),
@@ -276,7 +346,27 @@ def update_products_cache():
                 "size": size,
                 "price": v.get("price"),
                 "available": v.get("available", True),
+                "image": v_image_src,
             })
+
+        # Build compact color variants list using first image per color (fallback to primary)
+        color_variants = []
+        seen = set()
+        for color, cimg in color_image_map.items():
+            if not color:
+                continue
+            color_variants.append({
+                "color": color,
+                "image": cimg or img  # fallback to product primary image
+            })
+            seen.add(color)
+
+        # ensure we capture colors that had no image map but exist in variants
+        for v in variants:
+            c = v.get("color")
+            if c and c not in seen:
+                color_variants.append({"color": c, "image": v.get("image") or img})
+                seen.add(c)
 
         normalized[pid] = {
             "id": pid,
@@ -285,14 +375,136 @@ def update_products_cache():
             "type": product_type,
             "description": desc,
             "tags": tags,
-            "variants": variants,
+            "variants": variants,  # full variants preserved
+            "color_variants": color_variants,  # new compact list for UI
             "primary_image": img,
             "handle": handle,
-            "updated_at": p.get("updated_at"),
+            "status": status,
+            "created_at": created_at,
+            "updated_at": updated_at,
         }
 
     # Save cache
     store.replace_collection(PRODUCTS_COLLECTION, normalized)
+    return jsonify({"count": len(normalized)})
+
+
+@app.post("/api/printify/products/cache/update")
+def update_printify_products_cache():
+    """Download Printify products, normalize, and store cache."""
+    shop_id = (request.json or {}).get("shop_id") or os.getenv("PRINTIFY_SHOP_ID")
+    if not shop_id:
+        return jsonify({"error": "Missing shop_id (provide in body or set PRINTIFY_SHOP_ID)"}), 400
+
+    normalized = {}
+    page = 1
+    total = 0
+
+    while True:
+        page_data = printify.list_products(shop_id=shop_id, page=page, limit=100)
+        # API may return either {"data":[...], "last_page":N, ...} or {"products":[...]}
+        data_list = page_data.get("data") or page_data.get("products") or []
+        if not data_list:
+            break
+
+        for p in data_list:
+            pid = str(p.get("id") or p.get("_id") or "")
+            if not pid:
+                continue
+
+            title = p.get("title") or p.get("name") or ""
+            # main image: tolerate dicts or plain strings; fallback to preview
+            primary_image = None
+            imgs = p.get("images") or []
+            if imgs:
+                first = imgs[0]
+                if isinstance(first, dict):
+                    primary_image = first.get("src") or first.get("url")
+                elif isinstance(first, str):
+                    primary_image = first
+            if not primary_image:
+                prv = p.get("preview")
+                if isinstance(prv, dict):
+                    primary_image = prv.get("src") or prv.get("url")
+                elif isinstance(prv, str):
+                    primary_image = prv
+
+            # Try to link to Shopify product URL if Printify gives external handle/id
+            shopify_url = None
+            ext = p.get("external") or {}
+            # tolerate dict or string shapes
+            if isinstance(ext, dict):
+                ext_handle = ext.get("handle") or ext.get("shopify_handle") or ext.get("product_handle")
+            elif isinstance(ext, str):
+                # in rare cases 'external' may just be the handle
+                ext_handle = ext.strip()
+            else:
+                ext_handle = None
+
+            if ext_handle:
+                shopify_url = f"https://{os.getenv('SHOPIFY_STORE_DOMAIN')}/products/{ext_handle}"
+
+            # Publication status: simply whether we have a Shopify link
+            published = bool(shopify_url)
+
+            # Channel-specific shapes: list, dict, or strings
+            if published is None:
+                published = False
+                sc_props = p.get("sales_channel_properties") or p.get("sales_channels") or []
+                # If it's a dict, check values; if list, iterate items; if string, look for 'published'
+                if isinstance(sc_props, dict):
+                    for v in sc_props.values():
+                        if (isinstance(v, dict) and _to_bool(v.get("published"))) or \
+                                (isinstance(v, str) and "published" in v.lower()):
+                            published = True
+                            break
+                elif isinstance(sc_props, list):
+                    for sc in sc_props:
+                        if isinstance(sc, dict):
+                            if _to_bool(sc.get("published")):
+                                published = True
+                                break
+                        elif isinstance(sc, str):
+                            if "published" in sc.lower():
+                                published = True
+                                break
+                elif isinstance(sc_props, str):
+                    published = "published" in sc_props.lower()
+
+            # Try to link to Shopify product URL if Printify gives external handle/id
+            shopify_url = None
+            ext = p.get("external") or {}
+            ext_handle = ext.get("handle")
+            if ext_handle:
+                shopify_url = f"https://{os.getenv('SHOPIFY_STORE_DOMAIN')}/products/{ext_handle}"
+            else:
+                # sometimes external id exists; if you store a mapping later, plug it here
+                pass
+
+            normalized[pid] = {
+                "id": pid,
+                "title": title,
+                "primary_image": primary_image,
+                "published": bool(published),
+                "shopify_url": shopify_url,
+                "created_at": p.get("created_at"),
+                "updated_at": p.get("updated_at"),
+            }
+            total += 1
+
+        # pagination end?
+        last_page = page_data.get("last_page")
+        current_page = page_data.get("current_page") or page
+        if last_page and current_page < last_page:
+            page += 1
+            continue
+        # Fallback: if no last_page info, stop after first page unless data == limit
+        if not last_page and len(data_list) >= 100:
+            page += 1
+            continue
+        break
+
+    store.replace_collection(PRINTIFY_PRODUCTS_COLLECTION, normalized)
     return jsonify({"count": len(normalized)})
 
 
