@@ -22,6 +22,7 @@
     <nav>
       <a href="/">Dashboard</a>
       <a href="/products">Shopify Products</a>
+      <a href="/printify/new" role="button" class="secondary">New Product</a>
       <button id="updateBtn">Update Cache</button>
     </nav>
   </header>
@@ -43,7 +44,7 @@
             {% endif %}
           </div>
           <div>
-            <h3>{{ p.title }}</h3>
+            <h3><a href="/printify/edit/{{ p.id }}">{{ p.title }}</a></h3>
             {% if p.shopify_url %}
               <p><a href="{{ p.shopify_url }}" target="_blank">View on Shopify</a></p>
             {% endif %}

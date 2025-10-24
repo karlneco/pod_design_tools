@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>New Printify Product — Pick a Template</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    header { display:flex; justify-content:space-between; align-items:center; }
+    .card { padding: 1rem; border: 1px solid #eee; border-radius: 10px; margin-bottom: 1rem; }
+    .grid { display:grid; grid-template-columns: 160px 1fr auto; gap: 1rem; align-items:center; }
+    img.thumb { width: 160px; height: 160px; object-fit: cover; border-radius: 8px; border:1px solid #e6e6e6; }
+  </style>
+</head>
+<body class="container">
+  <header>
+    <h1>New Printify Product</h1>
+    <nav>
+      <a href="/printify">Back to Printify</a>
+    </nav>
+  </header>
+
+  {% if not templates %}
+    <p>No cached templates found (titles containing “template”). Go back and Update Cache, or name your templates accordingly.</p>
+  {% endif %}
+
+  <main>
+    {% for t in templates %}
+      <article class="card">
+        <div class="grid">
+          <div>
+            {% if t.primary_image %}
+              <img class="thumb" src="{{ t.primary_image }}" alt="{{ t.title }}" />
+            {% endif %}
+          </div>
+          <div>
+            <h3>{{ t.title }}</h3>
+            {% if t.shopify_url %}
+              <p><small>Linked Shopify page exists for this template.</small></p>
+            {% endif %}
+          </div>
+          <div>
+            <button onclick="duplicate('{{ t.id }}')">Duplicate</button>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </main>
+
+<script>
+async function duplicate(template_id){
+  const btns = document.querySelectorAll('button'); btns.forEach(b=>b.disabled=true);
+  try{
+    const res = await fetch('/api/printify/products/duplicate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ product_id: template_id })
+    });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error||'Failed'); btns.forEach(b=>b.disabled=false); return; }
+    // Try nested shape: { ok: true, created: { id or product_id } }
+    const pid = String(
+      (data.created && (data.created.id || data.created.product_id)) ||
+      data.id || data.product_id || ''
+    );
+    if(!pid){ alert('Created, but no product id returned'); return; }
+    location.href = `/printify/edit/${pid}`;
+  }catch(e){
+    alert('Failed: '+e.message);
+  }
+}
+</script>
+</body>
+</html>

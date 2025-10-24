@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit Printify Product</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    header { display:flex; justify-content:space-between; align-items:center; }
+    form { max-width: 800px; }
+  </style>
+</head>
+<body class="container">
+  <header>
+    <h1>Edit Printify Product</h1>
+    <nav>
+      <a href="/printify">Printify Products</a>
+    </nav>
+  </header>
+
+  <main>
+    <form id="editForm">
+      <input type="hidden" name="id" value="{{ p.id }}" />
+      <label>
+        Product Name
+        <input name="title" value="{{ p.title }}" />
+      </label>
+      <label>
+        Description
+        <textarea name="description" rows="6">{{ p.description }}</textarea>
+      </label>
+      <div>
+        <button type="button" onclick="save()">Save (coming soon)</button>
+      </div>
+    </form>
+
+    <details style="margin-top:1rem;">
+      <summary>Show raw Printify JSON</summary>
+      <div>
+        <button type="button" onclick="copyRaw()">Copy JSON</button>
+        <pre id="rawJson" style="white-space:pre-wrap; background:#f7f7f7; padding:1rem; border-radius:8px; border:1px solid #e6e6e6; max-height:50vh; overflow:auto;">
+{{ p.raw | tojson(indent=2) }}
+        </pre>
+      </div>
+    </details>
+
+  </main>
+
+<script>
+// We'll wire this to an update endpoint next iteration
+function save(){
+  alert('Saving not wired yet — next step!');
+}
+function copyRaw(){
+  const el = document.getElementById('rawJson');
+  const txt = el.innerText || el.textContent;
+  navigator.clipboard.writeText(txt).then(()=>alert('Copied JSON to clipboard'));
+}
+</script>
+</body>
+</html>

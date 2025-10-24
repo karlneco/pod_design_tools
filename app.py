@@ -27,7 +27,7 @@ DATA_DIR.mkdir(exist_ok=True)
 MOCKUPS_DIR.mkdir(exist_ok=True)
 
 store = JsonStore(DATA_DIR)
-printify = PrintifyClient(os.getenv("PRINTIFY_API_TOKEN"), None)
+printify = PrintifyClient()
 shopify = ShopifyClient(
     store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"),
     admin_token=os.getenv("SHOPIFY_ADMIN_TOKEN"),
@@ -83,6 +83,48 @@ def printify_page():
 
     items = sorted(items, key=_ts, reverse=True)
     return render_template("printify.html", items=items, store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"))
+
+
+@app.get("/printify/new")
+def printify_new():
+    # Use cached Printify products and filter titles containing 'template'
+    items = store.list(PRINTIFY_PRODUCTS_COLLECTION)
+    templates = []
+    for p in items:
+        title = (p.get("title") or "").lower()
+        if "template" in title:
+            templates.append(p)
+    # Sort alphabetically
+    templates = sorted(templates, key=lambda x: (x.get("title") or "").lower())
+    return render_template("printify_new.html", templates=templates)
+
+
+@app.get("/printify/edit/<product_id>")
+def printify_edit(product_id):
+    shop_id = os.getenv("PRINTIFY_SHOP_ID")
+    if not shop_id:
+        return "Missing PRINTIFY_SHOP_ID", 400
+    try:
+        full = printify.get_product(product_id)
+    except Exception as e:
+        return f"Failed to load product: {e}", 400
+
+    # Log the raw JSON to your Flask log for easy comparison
+    try:
+        import json as _json
+        app.logger.info("Printify product %s:\n%s", product_id, _json.dumps(full, indent=2, ensure_ascii=False))
+    except Exception:
+        pass
+
+    # Minimal fields for now
+    ctx = {
+        "id": str(full.get("id") or full.get("_id") or product_id),
+        "title": full.get("title") or full.get("name") or "",
+        "description": full.get("description") or "",
+        "raw": full,  # pass raw object to template for on-page dump
+    }
+    return render_template("printify_edit.html", p=ctx)
+
 
 
 # -----------------------------
@@ -221,7 +263,6 @@ def printify_create_product(slug):
 
     payload = request.json or {}
     created = printify.create_product(
-        shop_id=payload.get("shop_id"),
         product_spec={
             "title": design["generated"].get("title") or design["title"],
             "description": design["generated"].get("description") or "",
@@ -246,7 +287,6 @@ def printify_publish(slug):
 
     payload = request.json or {}
     result = printify.publish_to_shopify(
-        shop_id=payload.get("shop_id"),
         product_id=payload.get("product_id"),
         publish_details=payload.get("publish_details", {}),
     )
@@ -274,6 +314,32 @@ def api_list_products():
 @app.get("/api/printify/products")
 def api_list_printify_products():
     return jsonify(store.list(PRINTIFY_PRODUCTS_COLLECTION))
+
+
+@app.post("/api/printify/products/duplicate")
+def api_printify_duplicate():
+    data = request.get_json(force=True) or {}
+    product_id = data.get("product_id") or data.get("template_id")
+    new_title = data.get("title") or "New Product"
+    new_description = data.get("description") or ""
+
+    if not product_id:
+        return jsonify({"error": "product_id is required"}), 400
+
+    pci = PrintifyClient()
+
+    # 1) Fetch the template product
+    template = pci.get_product(product_id=product_id)
+
+    # 2) Create a new product using the “lean” payload (no SKUs, slim variants & print_areas)
+    created = pci.duplicate_from_template(
+        template=template,
+        title=new_title,
+        description=new_description,
+        tags=template.get("tags", [])
+    )
+
+    return jsonify({"ok": True, "created": created}), 201
 
 
 @app.post("/api/products/cache/update")
@@ -401,7 +467,7 @@ def update_printify_products_cache():
     total = 0
 
     while True:
-        page_data = printify.list_products(shop_id=shop_id, page=page, limit=100)
+        page_data = printify.list_products(page=page, limit=100)
         # API may return either {"data":[...], "last_page":N, ...} or {"products":[...]}
         data_list = page_data.get("data") or page_data.get("products") or []
         if not data_list:
