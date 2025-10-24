@@ -40,9 +40,12 @@
             {% endif %}
           </div>
           <div>
+            <button class="btn btn-outline-secondary me-2" onclick="extractColors('{{ t.id }}', this)">Extract Colors</button>
             <button onclick="duplicate('{{ t.id }}')">Duplicate</button>
           </div>
         </div>
+        <div class="extractColorsStatus small text-muted mt-2"></div>
+
       </article>
     {% endfor %}
   </main>
@@ -69,6 +72,32 @@ async function duplicate(template_id){
     alert('Failed: '+e.message);
   }
 }
+async function extractColors(templateId, btn){
+  // find the status element within this card
+  const card = btn.closest('article');
+  const statusEl = card.querySelector('.extractColorsStatus');
+
+  statusEl.textContent = '';
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Extracting…';
+  try{
+    const resp = await fetch(`/api/printify/templates/${encodeURIComponent(templateId)}/extract_colors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data?.error || 'Failed');
+    statusEl.textContent = `✅ Saved ${data.count} colors → ${data.path}`;
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = `❌ ${err.message || err}`;
+  }finally{
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
 </script>
 </body>
 </html>

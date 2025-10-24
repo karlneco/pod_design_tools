@@ -205,3 +205,28 @@ class PrintifyClient:
             except httpx.HTTPStatusError as e:
                 raise httpx.HTTPStatusError(f"{e} — body: {r.text}", request=e.request, response=e.response)
             return r.json()
+
+    def get_blueprint_provider_variants(self, blueprint_id: int | str, print_provider_id: int | str) -> dict:
+        """
+        Get the provider-specific variants for a blueprint.
+        Docs: /v1/catalog/blueprints/{blueprint_id}/print_providers/{print_provider_id}/variants.json
+        """
+        url = f"{PRINTIFY_API_BASE}/catalog/blueprints/{int(blueprint_id)}/print_providers/{int(print_provider_id)}/variants.json"
+        with httpx.Client(timeout=60) as client:
+            r = client.get(url, headers=self.headers)
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise httpx.HTTPStatusError(f"{e} — body: {r.text}", request=e.request, response=e.response)
+            return r.json()
+
+    def list_blueprint_providers(self, blueprint_id: int | str) -> dict:
+        """Helper: list providers for a blueprint (for clearer errors/fallbacks)."""
+        url = f"{PRINTIFY_API_BASE}/catalog/blueprints/{int(blueprint_id)}/print_providers.json"
+        with httpx.Client(timeout=60) as client:
+            r = client.get(url, headers=self.headers)
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise httpx.HTTPStatusError(f"{e} — body: {r.text}", request=e.request, response=e.response)
+            return r.json()

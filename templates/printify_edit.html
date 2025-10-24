@@ -8,6 +8,7 @@
   <style>
     header { display:flex; justify-content:space-between; align-items:center; }
     form { max-width: 800px; }
+    .pill{ display:inline-block; background:#eef; padding:.2rem .5rem; border-radius:999px; margin-right:.25rem; white-space:nowrap; }
   </style>
 </head>
 <body class="container">
@@ -29,9 +30,35 @@
         Description
         <textarea name="description" rows="6">{{ p.description }}</textarea>
       </label>
-      <div>
-        <button type="button" onclick="save()">Save (coming soon)</button>
-      </div>
+        <fieldset>
+          <legend>Design files (local only for now)</legend>
+          <div class="grid" style="grid-template-columns:1fr 1fr; gap:1rem;">
+            <label>
+              Light-design (for dark shirts)
+              <input type="file" id="lightFile" accept=".png,.jpg,.jpeg,.webp" />
+            </label>
+            <label>
+              Dark-design (for light shirts)
+              <input type="file" id="darkFile" accept=".png,.jpg,.jpeg,.webp" />
+            </label>
+          </div>
+          <div style="margin-top:.5rem;">
+            <button type="button" id="uploadBtn">Save Designs Locally</button>
+            <small id="uploadStatus" class="muted" style="margin-left:.5rem;"></small>
+          </div>
+        </fieldset>
+
+        <fieldset style="margin-top:1rem;">
+          <legend>Color recommendations</legend>
+          <div>
+            <button type="button" id="recommendBtn">Get Color Recommendations</button>
+          </div>
+          <div id="recs" style="margin-top:.5rem;"></div>
+        </fieldset>
+
+        <div style="margin-top:1rem;">
+          <button type="button" onclick="save()">Save (coming soon)</button>
+        </div>
     </form>
 
     <details style="margin-top:1rem;">
@@ -56,6 +83,59 @@ function copyRaw(){
   const txt = el.innerText || el.textContent;
   navigator.clipboard.writeText(txt).then(()=>alert('Copied JSON to clipboard'));
 }
+// Upload design files
+document.getElementById('uploadBtn').addEventListener('click', async ()=>{
+  const fd = new FormData();
+  fd.append('product_id', document.querySelector('input[name="id"]').value);
+  const lf = document.getElementById('lightFile').files[0];
+  const df = document.getElementById('darkFile').files[0];
+  if (lf) fd.append('light', lf);
+  if (df) fd.append('dark', df);
+  const st = document.getElementById('uploadStatus');
+  st.textContent = 'Uploading...';
+  try{
+    const res = await fetch('/api/designs/upload', { method:'POST', body: fd });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Upload failed');
+    st.textContent = 'Saved.';
+  }catch(e){
+    st.textContent = e.message;
+  }
+});
+
+// Ask ChatGPT for recommendations (backend fetches colors+hex automatically)
+document.getElementById('recommendBtn').addEventListener('click', async ()=>{
+  const pid = document.querySelector('input[name="id"]').value;
+  const out = document.getElementById('recs');
+  out.textContent = 'Thinking…';
+  try{
+    const res = await fetch('/api/recommend/colors', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ product_id: pid })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed');
+
+    // Render nice pills with color chips
+    const mk = (label, arr)=> {
+      const pills = (arr||[]).map(c => {
+        const hex = c.hex || '#ddd';
+        const title = c.title || c.name || '—';
+        return `<span class="pill" style="display:inline-flex;align-items:center;gap:.4rem;">
+                  <span style="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #ccc;background:${hex}"></span>
+                  ${title}
+                </span>`;
+      }).join(' ');
+      return `<div style="margin-top:.25rem;"><strong>${label}:</strong> ${pills || '<em>n/a</em>'}</div>`;
+    };
+
+    out.innerHTML = mk('Light-design picks', data.light) + mk('Dark-design picks', data.dark);
+  }catch(e){
+    out.textContent = e.message;
+  }
+});
+
 </script>
 </body>
 </html>
