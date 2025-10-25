@@ -248,6 +248,14 @@
 </main>
 
 <script>
+// === Saved color sets per design (light/dark), persisted in localStorage ===
+const PRODUCT_ID = document.querySelector('input[name="id"]').value;
+
+// Seed data coming from server for existing product:
+const INITIAL_SAVED_LIGHT = {{ p.initial_saved_light | tojson }};
+const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
+
+
     // We'll wire this to an update endpoint next iteration
     function save() {
         alert('Saving not wired yet — next step!');
@@ -426,18 +434,20 @@
         });
     }
 
-// === Saved color sets per design (light/dark), persisted in localStorage ===
-const PRODUCT_ID = document.querySelector('input[name="id"]').value;
-
 function storageKey(pid){ return `kd:designColors:${pid}`; }
+
 function loadSaved(pid){
-  try { return JSON.parse(localStorage.getItem(storageKey(pid))) || { light:[], dark:[] }; }
-  catch { return { light:[], dark:[] }; }
+  try {
+    const existing = JSON.parse(localStorage.getItem(storageKey(pid)));
+    if (existing && (Array.isArray(existing.light) || Array.isArray(existing.dark))) {
+      return { light: existing.light || [], dark: existing.dark || [] };
+    }
+  } catch {}
+  // seed from server once
+  const seeded = { light: INITIAL_SAVED_LIGHT || [], dark: INITIAL_SAVED_DARK || [] };
+  try { localStorage.setItem(storageKey(pid), JSON.stringify(seeded)); } catch {}
+  return seeded;
 }
-function saveSaved(pid, data){
-  localStorage.setItem(storageKey(pid), JSON.stringify(data));
-}
-function normalizeHex(h){ if(!h) return null; let s=String(h).trim(); return s[0]==='#'?s:('#'+s); }
 
 function renderSaved(side, container){
   const saved = loadSaved(PRODUCT_ID)[side] || [];
