@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone
 from openai import OpenAI
 import base64, mimetypes, json, os
-from pathlib import Path
-
+from flask import send_from_directory
+from pathlib import Path as _P
 from storage import JsonStore
 from services.printify import PrintifyClient
 from services.shopify import ShopifyClient
@@ -107,29 +107,119 @@ def printify_new():
     return render_template("printify_new.html", templates=templates)
 
 
+@app.get("/designs/<product_id>/<which>")
+def serve_design_file(product_id, which):
+    """
+    Serves the saved design file (light|dark) if present under data/designs/<product_id>/.
+    """
+    base = _P("data/designs") / str(product_id)
+    if which not in ("light", "dark"):
+        return "Not found", 404
+    for p in base.glob(f"{which}.*"):
+        # Only allow image extensions
+        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
+            return send_from_directory(base, p.name)  # /designs/<id>/<which> -> actual file
+    return "Not found", 404
+
+
 @app.get("/printify/edit/<product_id>")
 def printify_edit(product_id):
-    shop_id = os.getenv("PRINTIFY_SHOP_ID")
-    if not shop_id:
-        return "Missing PRINTIFY_SHOP_ID", 400
     try:
         full = printify.get_product(product_id)
     except Exception as e:
         return f"Failed to load product: {e}", 400
 
-    # Log the raw JSON to your Flask log for easy comparison
+    # Log raw JSON for debugging
     try:
         import json as _json
         app.logger.info("Printify product %s:\n%s", product_id, _json.dumps(full, indent=2, ensure_ascii=False))
     except Exception:
         pass
 
-    # Minimal fields for now
+    # Extract ALL provider colors (name + hex) from product.options[type=color]
+    # Then compute the SUBSET actually used by this product's enabled variants.
+    all_colors = []
+    color_by_title = {}
+    for opt in (full.get("options") or []):
+        if (opt.get("type") == "color") or (str(opt.get("name","")).lower() == "colors"):
+            for v in (opt.get("values") or []):
+                hexes = v.get("colors") or []
+                item = {
+                    "id": v.get("id"),
+                    "title": v.get("title"),
+                    "hex": (hexes[0] if hexes else "#dddddd")
+                }
+                all_colors.append(item)
+                color_by_title[str(v.get("title"))] = item
+
+    def _extract_color_from_variant(v: dict) -> str | None:
+        """
+        Return the color name from a variant.
+        Handles both dict-style and list-style 'options'.
+        Fallback to parsing the variant 'title' like 'Black / S'.
+        """
+        opts = v.get("options")
+        # dict form: {"color": "Black", "size": "S"} or capitalization variants
+        if isinstance(opts, dict):
+            c = (opts.get("color") or opts.get("Color") or
+                 opts.get("colour") or opts.get("Colour"))
+            if c:
+                return str(c)
+        # list form: [{"name":"Color","value":"Black"}, {"name":"Size","value":"S"}]
+        if isinstance(opts, list):
+            for o in opts:
+                try:
+                    name = (o.get("name") or "").strip().lower()
+                    if name in ("color", "colour"):
+                        val = o.get("value") or o.get("title")
+                        if val:
+                            return str(val)
+                except AttributeError:
+                    continue
+        # fallback: parse from title like "Black / S"
+        t = v.get("title") or ""
+        if " / " in t:
+            return t.split(" / ")[0].strip()
+        return None
+
+    used_titles = set()
+    for var in (full.get("variants") or []):
+        if var.get("is_enabled", True) is False:
+            continue
+        c = _extract_color_from_variant(var)
+        if c:
+            used_titles.add(c)
+
+    # Build the used list (preserve only items we can map back to name+hex)
+    template_colors_used = []
+    for title in sorted(used_titles, key=lambda s: s.lower()):
+        if title in color_by_title:
+            template_colors_used.append(color_by_title[title])
+        else:
+            # Edge case: a variant color name that isn't in 'options' values
+            template_colors_used.append({"id": None, "title": title, "hex": "#dddddd"})
+
+    # Dropdown should show ALL available colors, sorted alphabetically
+    available_colors = sorted(all_colors, key=lambda c: (c["title"] or "").lower())
+
+    # Add saved design URLs if they exist
+    from pathlib import Path
+    base = Path("data/designs") / str(product_id)
+    def _first_url(which):
+        for p in base.glob(f"{which}.*"):
+            if p.suffix.lower() in {".png",".jpg",".jpeg",".webp"}:
+                return f"/designs/{product_id}/{which}"
+        return None
+
     ctx = {
         "id": str(full.get("id") or full.get("_id") or product_id),
         "title": full.get("title") or full.get("name") or "",
         "description": full.get("description") or "",
-        "raw": full,  # pass raw object to template for on-page dump
+        "raw": full,
+        "template_colors_used": template_colors_used,
+        "available_colors": available_colors,  # already alphabetical
+        "light_url": _first_url("light"),
+        "dark_url": _first_url("dark"),
     }
     return render_template("printify_edit.html", p=ctx)
 

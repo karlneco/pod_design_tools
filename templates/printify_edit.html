@@ -1,140 +1,531 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Edit Printify Product</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
-  <style>
-    header { display:flex; justify-content:space-between; align-items:center; }
-    form { max-width: 800px; }
-    .pill{ display:inline-block; background:#eef; padding:.2rem .5rem; border-radius:999px; margin-right:.25rem; white-space:nowrap; }
-  </style>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Edit Printify Product</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <style>
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        form {
+            max-width: 1000px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            background: #eef;
+            padding: .25rem .6rem;
+            border-radius: 999px;
+            margin: .2rem .25rem .2rem 0;
+            white-space: nowrap;
+        }
+
+        .swatch {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid #bbb;
+        }
+
+        .preview-card {
+            border: 1px solid #e6e6e6;
+            border-radius: 10px;
+            padding: 1rem;
+            background: #fafafa;
+        }
+
+        .canvas-wrap {
+            width: 100%;
+            aspect-ratio: 1/1;
+            background: #fff;
+            border: 1px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .canvas-wrap img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .pill.clickable {
+            cursor: pointer;
+            user-select: none;
+            transition: transform .05s ease;
+        }
+
+        .pill.clickable:active {
+            transform: scale(0.98);
+        }
+
+        .saved-pills .pill {
+            background: #eef;
+        }
+
+        .pill .close {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            line-height: 14px;
+            text-align: center;
+            border-radius: 50%;
+            border: 1px solid #aaa;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+            margin-left: .25rem;
+        }
+
+        .pill .close:hover {
+            background: #f8d7da;
+            border-color: #e09;
+        }
+
+        @media (max-width: 900px) {
+            .row-2col {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body class="container">
-  <header>
+<header>
     <h1>Edit Printify Product</h1>
     <nav>
-      <a href="/printify">Printify Products</a>
+        <a href="/printify">Printify Products</a>
     </nav>
-  </header>
+</header>
 
-  <main>
+<main>
     <form id="editForm">
-      <input type="hidden" name="id" value="{{ p.id }}" />
-      <label>
-        Product Name
-        <input name="title" value="{{ p.title }}" />
-      </label>
-      <label>
-        Description
-        <textarea name="description" rows="6">{{ p.description }}</textarea>
-      </label>
-        <fieldset>
-          <legend>Design files (local only for now)</legend>
-          <div class="grid" style="grid-template-columns:1fr 1fr; gap:1rem;">
-            <label>
-              Light-design (for dark shirts)
-              <input type="file" id="lightFile" accept=".png,.jpg,.jpeg,.webp" />
-            </label>
-            <label>
-              Dark-design (for light shirts)
-              <input type="file" id="darkFile" accept=".png,.jpg,.jpeg,.webp" />
-            </label>
-          </div>
-          <div style="margin-top:.5rem;">
-            <button type="button" id="uploadBtn">Save Designs Locally</button>
-            <small id="uploadStatus" class="muted" style="margin-left:.5rem;"></small>
-          </div>
+        <input type="hidden" name="id" value="{{ p.id }}"/>
+        <label>
+            Product Name
+            <input name="title" value="{{ p.title }}"/>
+        </label>
+        <label>
+            Description
+            <textarea name="description" rows="6">{{ p.description }}</textarea>
+        </label>
+        <section style="margin-top:.5rem;">
+            <h3 style="margin:0 0 .5rem 0;">Template colors</h3>
+            <div>
+                {% if p.template_colors_used and p.template_colors_used|length > 0 %}
+                    {% for c in p.template_colors_used %}
+                        <span class="pill clickable" data-hex="{{ c.hex }}" title="Preview on {{ c.title }}">
+                            <span class="swatch" style="background: {{ c.hex }}"></span>
+                            {{ c.title }}
+                        </span>
+                    {% endfor %}
+                {% else %}
+                    <em>No enabled colors found on this product.</em>
+                {% endif %}
+            </div>
+        </section>
+
+        <fieldset style="margin-top:1rem;">
+            <legend>Designs</legend>
+
+            <div class="row-2col">
+                <!-- Light design -->
+                <div class="preview-card">
+                    <h4>Light-design (for dark shirts)</h4>
+                    <div class="canvas-wrap" id="lightCanvas" style="background:#ffffff;">
+                        {% if p.light_url %}
+                            <img id="lightPreview" src="{{ p.light_url }}" alt="Light design"/>
+                        {% else %}
+                            <img id="lightPreview" style="display:none;" alt="Light design"/>
+                            <span class="muted">No design uploaded yet</span>
+                        {% endif %}
+                    </div>
+                    <div style="margin-top:.5rem;">
+                        <label class="file">
+                            <input type="file" id="lightFile" accept=".png,.jpg,.jpeg,.webp">
+                        </label>
+                    </div>
+                    <div style="margin-top:.5rem;">
+                        <div id="lightSaved" class="saved-pills"></div>
+                    </div>
+
+                    <div style="margin-top:.5rem;">
+                        <label>Preview on color</label>
+                        <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+                            <select id="lightColorSelect">
+                                {% for c in p.available_colors %}
+                                    <option value="{{ c.hex }}">{{ c.title }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="lightSaveColorBtn">Save This Color</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:.5rem;">
+                        <button type="button" id="uploadLightBtn">Save Light Design Locally</button>
+                        <small id="uploadLightStatus" class="muted" style="margin-left:.5rem;"></small>
+                    </div>
+                </div>
+
+                <!-- Dark design -->
+                <div class="preview-card">
+                    <h4>Dark-design (for light shirts)</h4>
+                    <div class="canvas-wrap" id="darkCanvas" style="background:#ffffff;">
+                        {% if p.dark_url %}
+                            <img id="darkPreview" src="{{ p.dark_url }}" alt="Dark design"/>
+                        {% else %}
+                            <img id="darkPreview" style="display:none;" alt="Dark design"/>
+                            <span class="muted">No design uploaded yet</span>
+                        {% endif %}
+                    </div>
+                    <div style="margin-top:.5rem;">
+                        <label class="file">
+                            <input type="file" id="darkFile" accept=".png,.jpg,.jpeg,.webp">
+                        </label>
+                    </div>
+                    <div style="margin-top:.5rem;">
+                      <div id="darkSaved" class="saved-pills"></div>
+                    </div>
+                    <div style="margin-top:.5rem;">
+                        <label>Preview on color</label>
+                        <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+                            <select id="darkColorSelect">
+                                {% for c in p.available_colors %}
+                                    <option value="{{ c.hex }}">{{ c.title }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="darkSaveColorBtn">Save This Color</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:.5rem;">
+                        <button type="button" id="uploadDarkBtn">Save Dark Design Locally</button>
+                        <small id="uploadDarkStatus" class="muted" style="margin-left:.5rem;"></small>
+                    </div>
+                </div>
+            </div>
         </fieldset>
 
         <fieldset style="margin-top:1rem;">
-          <legend>Color recommendations</legend>
-          <div>
-            <button type="button" id="recommendBtn">Get Color Recommendations</button>
-          </div>
-          <div id="recs" style="margin-top:.5rem;"></div>
+            <legend>Color recommendations</legend>
+            <div>
+                <button type="button" id="recommendBtn">Get Color Recommendations</button>
+            </div>
+            <div id="recs" style="margin-top:.5rem;"></div>
         </fieldset>
 
         <div style="margin-top:1rem;">
-          <button type="button" onclick="save()">Save (coming soon)</button>
+            <button type="button" onclick="save()">Save (coming soon)</button>
         </div>
     </form>
 
     <details style="margin-top:1rem;">
-      <summary>Show raw Printify JSON</summary>
-      <div>
-        <button type="button" onclick="copyRaw()">Copy JSON</button>
-        <pre id="rawJson" style="white-space:pre-wrap; background:#f7f7f7; padding:1rem; border-radius:8px; border:1px solid #e6e6e6; max-height:50vh; overflow:auto;">
+        <summary>Show raw Printify JSON</summary>
+        <div>
+            <button type="button" onclick="copyRaw()">Copy JSON</button>
+            <pre id="rawJson"
+                 style="white-space:pre-wrap; background:#f7f7f7; padding:1rem; border-radius:8px; border:1px solid #e6e6e6; max-height:50vh; overflow:auto;">
 {{ p.raw | tojson(indent=2) }}
         </pre>
-      </div>
+        </div>
     </details>
 
-  </main>
+</main>
 
 <script>
-// We'll wire this to an update endpoint next iteration
-function save(){
-  alert('Saving not wired yet — next step!');
-}
-function copyRaw(){
-  const el = document.getElementById('rawJson');
-  const txt = el.innerText || el.textContent;
-  navigator.clipboard.writeText(txt).then(()=>alert('Copied JSON to clipboard'));
-}
-// Upload design files
-document.getElementById('uploadBtn').addEventListener('click', async ()=>{
-  const fd = new FormData();
-  fd.append('product_id', document.querySelector('input[name="id"]').value);
-  const lf = document.getElementById('lightFile').files[0];
-  const df = document.getElementById('darkFile').files[0];
-  if (lf) fd.append('light', lf);
-  if (df) fd.append('dark', df);
-  const st = document.getElementById('uploadStatus');
-  st.textContent = 'Uploading...';
-  try{
-    const res = await fetch('/api/designs/upload', { method:'POST', body: fd });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error||'Upload failed');
-    st.textContent = 'Saved.';
-  }catch(e){
-    st.textContent = e.message;
-  }
-});
+    // We'll wire this to an update endpoint next iteration
+    function save() {
+        alert('Saving not wired yet — next step!');
+    }
 
-// Ask ChatGPT for recommendations (backend fetches colors+hex automatically)
-document.getElementById('recommendBtn').addEventListener('click', async ()=>{
-  const pid = document.querySelector('input[name="id"]').value;
-  const out = document.getElementById('recs');
-  out.textContent = 'Thinking…';
-  try{
-    const res = await fetch('/api/recommend/colors', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ product_id: pid })
-    });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed');
+    function copyRaw() {
+        const el = document.getElementById('rawJson');
+        const txt = el.innerText || el.textContent;
+        navigator.clipboard.writeText(txt).then(() => alert('Copied JSON to clipboard'));
+    }
 
-    // Render nice pills with color chips
-    const mk = (label, arr)=> {
-      const pills = (arr||[]).map(c => {
-        const hex = c.hex || '#ddd';
-        const title = c.title || c.name || '—';
-        return `<span class="pill" style="display:inline-flex;align-items:center;gap:.4rem;">
+    // Ask ChatGPT for recommendations (backend fetches colors+hex automatically)
+    document.getElementById('recommendBtn').addEventListener('click', async () => {
+        const pid = document.querySelector('input[name="id"]').value;
+        const out = document.getElementById('recs');
+        out.textContent = 'Thinking…';
+        try {
+            const res = await fetch('/api/recommend/colors', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({product_id: pid})
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed');
+
+            // Render nice pills with color chips
+            const mk = (label, arr) => {
+                const pills = (arr || []).map(c => {
+                    const hex = c.hex || '#ddd';
+                    const title = c.title || c.name || '—';
+                    return `<span class="pill" style="display:inline-flex;align-items:center;gap:.4rem;">
                   <span style="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #ccc;background:${hex}"></span>
                   ${title}
                 </span>`;
-      }).join(' ');
-      return `<div style="margin-top:.25rem;"><strong>${label}:</strong> ${pills || '<em>n/a</em>'}</div>`;
-    };
+                }).join(' ');
+                return `<div style="margin-top:.25rem;"><strong>${label}:</strong> ${pills || '<em>n/a</em>'}</div>`;
+            };
 
-    out.innerHTML = mk('Light-design picks', data.light) + mk('Dark-design picks', data.dark);
-  }catch(e){
-    out.textContent = e.message;
+            out.innerHTML = mk('Light-design picks', data.light) + mk('Dark-design picks', data.dark);
+        } catch (e) {
+            out.textContent = e.message;
+        }
+    });
+
+    // --- Preview helpers ---
+    function setPreview(imgEl, fileInput) {
+        const file = fileInput?.files?.[0];
+        if (!file || !imgEl) return;
+        // revoke any previous object URL attached to this img
+        if (imgEl.dataset.objurl) {
+            URL.revokeObjectURL(imgEl.dataset.objurl);
+            delete imgEl.dataset.objurl;
+        }
+        const url = URL.createObjectURL(file);
+        imgEl.src = url;
+        imgEl.dataset.objurl = url;
+        imgEl.style.display = 'block';
+        const parent = imgEl.parentElement;
+        const text = parent?.querySelector('span.muted');
+        if (text) text.remove();
+    }
+
+    function setCanvasBg(canvasEl, hex) {
+        if (!/^#?[0-9A-Fa-f]{3,6}$/.test(hex)) return;
+        if (hex[0] !== '#') hex = '#' + hex;
+        canvasEl.style.background = hex;
+    }
+
+    // --- Wire light preview/upload ---
+    const lightFile = document.getElementById('lightFile');
+    const lightPreview = document.getElementById('lightPreview');
+    const lightCanvas = document.getElementById('lightCanvas');
+    const lightColorSelect = document.getElementById('lightColorSelect');
+    const uploadLightBtn = document.getElementById('uploadLightBtn');
+    const uploadLightStatus = document.getElementById('uploadLightStatus');
+
+    if (lightFile) {
+        lightFile.addEventListener('change', () => setPreview(lightPreview, lightFile));
+    }
+    if (lightColorSelect) {
+        lightColorSelect.addEventListener('change', (e) => setCanvasBg(lightCanvas, e.target.value));
+        // default
+        setCanvasBg(lightCanvas, lightColorSelect.value || '#ffffff');
+    }
+    if (uploadLightBtn) {
+        uploadLightBtn.addEventListener('click', async () => {
+            const pid = document.querySelector('input[name="id"]').value;
+            const fd = new FormData();
+            fd.append('product_id', pid);
+            if (lightFile.files[0]) fd.append('light', lightFile.files[0]);
+            uploadLightStatus.textContent = 'Saving...';
+            try {
+                const res = await fetch('/api/designs/upload', {method: 'POST', body: fd});
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Upload failed');
+                uploadLightStatus.textContent = 'Saved.';
+            } catch (e) {
+                uploadLightStatus.textContent = e.message;
+            }
+        });
+    }
+
+    // --- Wire dark preview/upload ---
+    const darkFile = document.getElementById('darkFile');
+    const darkPreview = document.getElementById('darkPreview');
+    const darkCanvas = document.getElementById('darkCanvas');
+    const darkColorSelect = document.getElementById('darkColorSelect');
+    const uploadDarkBtn = document.getElementById('uploadDarkBtn');
+    const uploadDarkStatus = document.getElementById('uploadDarkStatus');
+
+    if (darkFile) {
+        darkFile.addEventListener('change', () => setPreview(darkPreview, darkFile));
+    }
+    if (darkColorSelect) {
+        darkColorSelect.addEventListener('change', (e) => setCanvasBg(darkCanvas, e.target.value));
+        // default
+        setCanvasBg(darkCanvas, darkColorSelect.value || '#ffffff');
+    }
+    if (uploadDarkBtn) {
+        uploadDarkBtn.addEventListener('click', async () => {
+            const pid = document.querySelector('input[name="id"]').value;
+            const fd = new FormData();
+            fd.append('product_id', pid);
+            if (darkFile.files[0]) fd.append('dark', darkFile.files[0]);
+            uploadDarkStatus.textContent = 'Saving...';
+            try {
+                const res = await fetch('/api/designs/upload', {method: 'POST', body: fd});
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Upload failed');
+                uploadDarkStatus.textContent = 'Saved.';
+            } catch (e) {
+                uploadDarkStatus.textContent = e.message;
+            }
+        });
+    }
+    // --- Clickable template-color pills -> set both previews & sync selects ---
+    const pillsContainer = document.querySelector('section h3 + div'); // the <div> under "Template colors"
+    function normalizeHex(h) {
+        if (!h) return null;
+        let s = String(h).trim();
+        return s[0] === '#' ? s : ('#' + s);
+    }
+
+    if (pillsContainer) {
+        pillsContainer.addEventListener('click', (e) => {
+            const pill = e.target.closest('.pill.clickable');
+            if (!pill) return;
+            const hex = normalizeHex(pill.dataset.hex);
+            if (!hex) return;
+
+            // Update both canvases
+            const lightCanvas = document.getElementById('lightCanvas');
+            const darkCanvas = document.getElementById('darkCanvas');
+            if (lightCanvas) setCanvasBg(lightCanvas, hex);
+            if (darkCanvas) setCanvasBg(darkCanvas, hex);
+
+            // Sync both selects to the clicked color if it exists there
+            const lightSel = document.getElementById('lightColorSelect');
+            const darkSel = document.getElementById('darkColorSelect');
+
+            function setSelect(sel, hexVal) {
+                if (!sel) return;
+                let found = false;
+                for (const opt of sel.options) {
+                    if (normalizeHex(opt.value).toLowerCase() === hexVal.toLowerCase()) {
+                        sel.value = opt.value;
+                        found = true;
+                        break;
+                    }
+                }
+                // If the exact hex isn't in the dropdown (edge case), just keep the BG change without changing the select
+            }
+
+            setSelect(lightSel, hex);
+            setSelect(darkSel, hex);
+        });
+    }
+
+// === Saved color sets per design (light/dark), persisted in localStorage ===
+const PRODUCT_ID = document.querySelector('input[name="id"]').value;
+
+function storageKey(pid){ return `kd:designColors:${pid}`; }
+function loadSaved(pid){
+  try { return JSON.parse(localStorage.getItem(storageKey(pid))) || { light:[], dark:[] }; }
+  catch { return { light:[], dark:[] }; }
+}
+function saveSaved(pid, data){
+  localStorage.setItem(storageKey(pid), JSON.stringify(data));
+}
+function normalizeHex(h){ if(!h) return null; let s=String(h).trim(); return s[0]==='#'?s:('#'+s); }
+
+function renderSaved(side, container){
+  const saved = loadSaved(PRODUCT_ID)[side] || [];
+  container.innerHTML = saved.map(c => {
+    const hex = normalizeHex(c.hex || '#ddd');
+    const title = c.title || '—';
+    return `<span class="pill clickable" data-hex="${hex}" data-title="${title}">
+              <span class="swatch" style="background:${hex}"></span>${title}
+              <span class="close" title="Remove">×</span>
+            </span>`;
+  }).join(' ');
+}
+
+// Bind click handlers ONCE per container (event delegation)
+function wireSavedHandlers(side, container, canvasEl, selectEl){
+  if (container.dataset.wired === '1') return; // idempotent
+  container.dataset.wired = '1';
+  container.addEventListener('click', (e)=>{
+    const isClose = e.target.closest('.close');
+    const pill    = e.target.closest('.pill.clickable');
+    if (!pill) return;
+    const hex   = normalizeHex(pill.dataset.hex);
+    const title = pill.dataset.title || '—';
+
+    if (isClose){
+      const data = loadSaved(PRODUCT_ID);
+      data[side] = (data[side]||[]).filter(x => !(normalizeHex(x.hex)===hex && x.title===title));
+      saveSaved(PRODUCT_ID, data);
+      renderSaved(side, container); // re-render after delete
+      return;
+    }
+
+    // Click pill: update ONLY this panel
+    setCanvasBg(canvasEl, hex);
+    if (selectEl){
+      for(const opt of selectEl.options){
+        if (normalizeHex(opt.value).toLowerCase() === hex.toLowerCase()){
+          selectEl.value = opt.value; break;
+        }
+      }
+    }
+  });
+}
+
+function addCurrentSelection(side, selectEl){
+  if (!selectEl) return;
+  const hex = normalizeHex(selectEl.value);
+  const title = selectEl.options[selectEl.selectedIndex]?.text || '—';
+  if (!hex) return;
+  const data = loadSaved(PRODUCT_ID);
+  const arr = data[side] = data[side] || [];
+  const exists = arr.some(x => normalizeHex(x.hex).toLowerCase() === hex.toLowerCase());
+  if (!exists){
+    arr.push({ title, hex });
+    // unique + A→Z
+    const seen = new Set();
+    data[side] = arr.filter(x=>{
+      const key = (x.title||'')+'|'+normalizeHex(x.hex).toLowerCase();
+      if (seen.has(key)) return false; seen.add(key); return true;
+    }).sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+    saveSaved(PRODUCT_ID, data);
   }
-});
+}
+
+// Wire up per-side
+const lightSavedEl = document.getElementById('lightSaved');
+const darkSavedEl  = document.getElementById('darkSaved');
+const lightSaveBtn = document.getElementById('lightSaveColorBtn');
+const darkSaveBtn  = document.getElementById('darkSaveColorBtn');
+
+renderSaved('light', lightSavedEl);
+renderSaved('dark',  darkSavedEl);
+
+wireSavedHandlers('light', lightSavedEl, document.getElementById('lightCanvas'), document.getElementById('lightColorSelect'));
+wireSavedHandlers('dark',  darkSavedEl,  document.getElementById('darkCanvas'),  document.getElementById('darkColorSelect'));
+
+if (lightSaveBtn){
+  lightSaveBtn.addEventListener('click', ()=>{
+    addCurrentSelection('light', document.getElementById('lightColorSelect'));
+    renderSaved('light', lightSavedEl);
+  });
+}
+if (darkSaveBtn){
+  darkSaveBtn.addEventListener('click', ()=>{
+    addCurrentSelection('dark', document.getElementById('darkColorSelect'));
+    renderSaved('dark', darkSavedEl);
+  });
+}
 
 </script>
 </body>

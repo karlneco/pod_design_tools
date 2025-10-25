@@ -26,6 +26,14 @@ class PrintifyClient:
         HEX6 = re.compile(r"^[0-9A-Fa-f]{6}$")
         OID24 = re.compile(r"^[0-9a-f]{24}$")
 
+        FRONT_LOGO = {
+            "id": "68faffc792143382282f3002",  # your store logo file id
+            "x": 0.5,
+            "y": 0.29419525065963065,
+            "scale": 1.0,
+            "angle": 0
+        }
+
         def _to_int(v, default=0):
             try:
                 # If it's "0.0" or 0.0, handle gracefully
@@ -91,18 +99,32 @@ class PrintifyClient:
                         })
                 # Only keep this placeholder if it has at least one image
                 if imgs:
-                    entry = {"position": ph.get("position", "front"), "images": imgs}
+                    entry={}
                     if isinstance(ph.get("decoration_method"), str):
                         entry["decoration_method"] = ph["decoration_method"]
+                    entry["position"] = ph["position"]
+                    entry["images"] = imgs
                     out.append(entry)
             return out
 
         def _slim_print_areas(print_areas: list[dict]) -> list[dict]:
+            """
+            Build slimmed print_areas (skip ones that end up empty), THEN
+            guarantee there is at least one 'front' placeholder by injecting
+            our store logo image if needed.
+            """
             slim = []
+            has_front = False
+
             for pa in (print_areas or []):
                 placeholders = _slim_placeholders(pa.get("placeholders", []))
+                # Track if any placeholder is 'front'
+                if any((ph.get("position") == "front") for ph in placeholders):
+                    has_front = True
+
                 if not placeholders:
-                    continue  # skip empty print area entirely
+                    continue  # keep behavior: drop completely empty areas
+
                 entry = {
                     "variant_ids": [int(v) for v in (pa.get("variant_ids") or [])],
                     "placeholders": placeholders,
@@ -111,20 +133,71 @@ class PrintifyClient:
                 if isinstance(bg, str) and HEX6.match(bg):
                     entry["background"] = bg.upper()
                 slim.append(entry)
+
+            # If no front placeholder survived, inject one at the top of the first area
+            if not has_front:
+                if not slim:
+                    # No usable areas at all — create a minimal one from the first template area shape
+                    # Try to copy variant_ids from the first input area, else union of all variant IDs, else []
+                    first_pa = (print_areas or [{}])[0]
+                    v_ids = [int(v) for v in (first_pa.get("variant_ids") or [])]
+                    if not v_ids:
+                        # best-effort: union of all
+                        seen = set()
+                        for pa in (print_areas or []):
+                            for v in (pa.get("variant_ids") or []):
+                                seen.add(int(v))
+                        v_ids = sorted(seen)
+                    slim.append({
+                        "variant_ids": v_ids,
+                        "placeholders": []
+                    })
+                # Inject the front placeholder with your known logo image
+                slim[0]["placeholders"].insert(0, {
+                    "position": "front",
+                    "images": [{
+                        "id": FRONT_LOGO["id"],
+                        "x": float(FRONT_LOGO["x"]),
+                        "y": float(FRONT_LOGO["y"]),
+                        "scale": float(FRONT_LOGO["scale"]),
+                        "angle": _to_int(FRONT_LOGO["angle"])
+                    }]
+                })
+                has_front = True
+
             return slim
 
         payload = {
+            "blueprint_id": template["blueprint_id"],
             "title": title,
             "description": description,
-            "tags": tags or template.get("tags", []),
-            "blueprint_id": template["blueprint_id"],
             "print_provider_id": template["print_provider_id"],
-            "variants": _slim_variants(template["variants"]),
+            "tags": tags or template.get("tags", []),
             "print_areas": _slim_print_areas(template.get("print_areas", [])),
+            "variants": _slim_variants(template["variants"]),
             # DO NOT include: images (mockups), options (read-only), id/created_at/updated_at, sales_channel_properties
         }
 
         url = f"{PRINTIFY_API_BASE}/shops/{self.shop_id}/products.json"
+        import json, datetime
+        from pathlib import Path
+
+        # --- DEBUG DUMP START ---
+        DEBUG_DIR = Path("data/debug")
+        DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        dump_path = DEBUG_DIR / f"printify_create_payload_{timestamp}.json"
+
+        # Pretty JSON
+        dump_data = {
+            "endpoint": url,
+            "headers": self.headers,
+            "payload": payload,
+        }
+        dump_path.write_text(json.dumps(dump_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"[DEBUG] Wrote full Printify payload to {dump_path}")
+        # --- DEBUG DUMP END ---
+
         with httpx.Client(timeout=60) as client:
             r = client.post(url, headers=self.headers, json=payload)
             try:
