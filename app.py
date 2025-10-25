@@ -55,9 +55,6 @@ def _todatetime(value):
         return datetime.min
 
 
-# -----------------------------
-# Simple Pages
-# -----------------------------
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -2184,10 +2181,6 @@ def recommend_colors():
 def serve_mockup(filename):
     dirpath = MOCKUPS_DIR
     return send_from_directory(dirpath, filename)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
 
 
 if __name__ == "__main__":
