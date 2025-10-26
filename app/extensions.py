@@ -1,44 +1,34 @@
+# app/extensions.py
 from flask_cors import CORS
+from pathlib import Path
+import os
+from dotenv import load_dotenv
+
 from .storage.json_store import JsonStore
 from .services.printify_client import PrintifyClient
 from .services.shopify_client import ShopifyClient
 
+# Load env just once here
+load_dotenv()
 
-class _CORS:
-    def init_app(self, app): CORS(app)
+# CORS is a real Flask extension (keeps init_app)
+cors = CORS()
 
+# Paths
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data"
+ASSETS_DIR = BASE_DIR / "assets"
+MOCKUPS_DIR = ASSETS_DIR / "mockups"
 
-cors = _CORS()
+# JsonStore — no wrapper needed
+store = JsonStore(DATA_DIR)
 
+# Printify client reads env internally in your implementation
+printify_client = PrintifyClient()
 
-class _Store:
-    obj: JsonStore | None = None
-
-    def init_app(self, app, data_dir):
-        self.obj = JsonStore(data_dir)
-
-
-store = _Store()
-
-
-class _Printify:
-    obj: PrintifyClient | None = None
-
-    def init_app(self, app): self.obj = PrintifyClient()
-
-
-printify_client = _Printify()
-
-
-class _Shopify:
-    obj: ShopifyClient | None = None
-
-    def init_app(self, app):
-        self.obj = ShopifyClient(
-            store_domain=app.config["SHOPIFY_STORE_DOMAIN"],
-            admin_token=app.config["SHOPIFY_ADMIN_TOKEN"],
-            api_version=app.config["SHOPIFY_API_VERSION"],
-        )
-
-
-shopify_client = _Shopify()
+# Shopify client needs explicit env values
+shopify_client = ShopifyClient(
+    store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"),
+    admin_token=os.getenv("SHOPIFY_ADMIN_TOKEN"),
+    api_version=os.getenv("SHOPIFY_API_VERSION", "2024-10"),
+)
