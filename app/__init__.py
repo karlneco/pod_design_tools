@@ -27,7 +27,7 @@ def create_app(config_class: type[Config] = Config):
     from .routes.mockups_api import bp as mockups_api
 
     app.register_blueprint(pages_bp)
-    app.register_blueprint(api)
+    app.register_blueprint(api, url_prefix="/api")
     app.register_blueprint(shopify_pages)
     app.register_blueprint(shopify_api, url_prefix="/api")
     app.register_blueprint(printify_pages)

@@ -35,12 +35,20 @@
             border: 1px solid #bbb;
         }
 
-        .preview-card {
-            border: 1px solid #e6e6e6;
-            border-radius: 10px;
-            padding: 1rem;
-            background: #fafafa;
-        }
+            .preview-card {
+              position: relative;            /* anchor for absolute button */
+              border: 1px solid #e6e6e6;
+              border-radius: 10px;
+              padding: 1rem;
+              background: #fafafa;
+            }
+            .remove-panel-btn{
+              position: absolute;
+              top: .5rem;                    /* tweak as you like */
+              right: .5rem;
+              padding: .35rem .6rem;
+              font-size: .85rem;
+            }
 
         .canvas-wrap {
             width: 100%;
@@ -143,12 +151,20 @@
         </section>
 
         <fieldset style="margin-top:1rem;">
-            <legend>Designs</legend>
+          <legend id="designsLegend">Designs</legend>
+          <div id="singleModeNotice" style="display:none;margin:.25rem 0 .75rem 0;">
+            <small>
+              Single design mode is ON.
+              <button type="button" id="restoreDarkPanelBtn" class="secondary" style="margin-left:.5rem;">
+                Restore second design panel
+              </button>
+            </small>
+          </div>
 
             <div class="row-2col">
                 <!-- Light design -->
                 <div class="preview-card">
-                    <h4>Light-design (for dark shirts)</h4>
+                    <h5>For Dark Shirts</h5>
                     <div class="canvas-wrap" id="lightCanvas" style="background:#ffffff;">
                         {% if p.light_url %}
                             <img id="lightPreview" src="{{ p.light_url }}" alt="Light design"/>
@@ -185,7 +201,10 @@
 
                 <!-- Dark design -->
                 <div class="preview-card">
-                    <h4>Dark-design (for light shirts)</h4>
+                    <h4>For Light Shirts</h4>
+                    <button type="button" id="removeDarkPanelBtn" class="secondary remove-panel-btn">
+                      Remove Panel
+                    </button>
                     <div class="canvas-wrap" id="darkCanvas" style="background:#ffffff;">
                         {% if p.dark_url %}
                             <img id="darkPreview" src="{{ p.dark_url }}" alt="Dark design"/>
@@ -251,6 +270,13 @@
 // === Saved color sets per design (light/dark), persisted in localStorage ===
 const PRODUCT_ID = document.querySelector('input[name="id"]').value;
 
+// --- Single design mode persistence ---
+const SINGLE_KEY = (pid)=> `kd:singleDesign:${pid}`;
+function isSingleMode(){ try { return localStorage.getItem(SINGLE_KEY(PRODUCT_ID)) === '1'; } catch { return false; } }
+function setSingleMode(on){
+  try { if(on) localStorage.setItem(SINGLE_KEY(PRODUCT_ID),'1'); else localStorage.removeItem(SINGLE_KEY(PRODUCT_ID)); } catch {}
+}
+
 // Seed data coming from server for existing product:
 const INITIAL_SAVED_LIGHT = {{ p.initial_saved_light | tojson }};
 const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
@@ -294,7 +320,20 @@ const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
                 return `<div style="margin-top:.25rem;"><strong>${label}:</strong> ${pills || '<em>n/a</em>'}</div>`;
             };
 
-            out.innerHTML = mk('Light-design picks', data.light) + mk('Dark-design picks', data.dark);
+              if (isSingleMode()){
+                // collapse to one bucket (union of light+dark, dedup by title|hex)
+                const union = [...(data.light||[]), ...(data.dark||[])];
+                const seen = new Set();
+                const uniq = [];
+                for (const c of union){
+                  const key = (c.title||'')+'|'+String(c.hex||'').toLowerCase();
+                  if (seen.has(key)) continue;
+                  seen.add(key); uniq.push(c);
+                }
+                out.innerHTML = mk('Single-design picks', uniq);
+              }else{
+                out.innerHTML = mk('Light-design picks', data.light) + mk('Dark-design picks', data.dark);
+              }
         } catch (e) {
             out.textContent = e.message;
         }
@@ -391,6 +430,28 @@ const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
             }
         });
     }
+
+    // --- Single design mode buttons ---
+const removeDarkPanelBtn  = document.getElementById('removeDarkPanelBtn');
+const restoreDarkPanelBtn = document.getElementById('restoreDarkPanelBtn');
+
+if (removeDarkPanelBtn){
+  removeDarkPanelBtn.addEventListener('click', ()=>{
+    setSingleMode(true);
+    applySingleModeUI();
+  });
+}
+if (restoreDarkPanelBtn){
+  restoreDarkPanelBtn.addEventListener('click', ()=>{
+    setSingleMode(false);
+    applySingleModeUI();
+  });
+}
+
+// Apply initial state on page load
+applySingleModeUI();
+
+
     // --- Clickable template-color pills -> set both previews & sync selects ---
     const pillsContainer = document.querySelector('section h3 + div'); // the <div> under "Template colors"
     function normalizeHex(h) {
@@ -449,6 +510,11 @@ function loadSaved(pid){
   return seeded;
 }
 
+function saveSaved(pid, data){
+  try { localStorage.setItem(storageKey(pid), JSON.stringify(data)); } catch {}
+}
+
+
 function renderSaved(side, container){
   const saved = loadSaved(PRODUCT_ID)[side] || [];
   container.innerHTML = saved.map(c => {
@@ -491,6 +557,46 @@ function wireSavedHandlers(side, container, canvasEl, selectEl){
     }
   });
 }
+
+function mergeDarkIntoLight(){
+  const data = loadSaved(PRODUCT_ID);
+  const light = Array.isArray(data.light) ? data.light.slice() : [];
+  const dark  = Array.isArray(data.dark) ? data.dark : [];
+  // dedupe by title|hex (case-insensitive for hex)
+  const seen = new Set(light.map(x => (x.title||'')+'|'+(String(x.hex||'').toLowerCase())));
+  dark.forEach(x=>{
+    const key = (x.title||'')+'|'+(String(x.hex||'').toLowerCase());
+    if(!seen.has(key)){ light.push({title:x.title, hex:x.hex}); seen.add(key); }
+  });
+  // sort A→Z by title
+  light.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+  data.light = light;
+  data.dark  = []; // clear dark bucket in single mode
+  saveSaved(PRODUCT_ID, data);
+}
+
+function applySingleModeUI(){
+  // pick the second preview card inside the two-column row, reliably
+  const cards = document.querySelectorAll('.row-2col .preview-card');
+  const darkCard = cards && cards.length > 1 ? cards[1] : null;
+  const notice   = document.getElementById('singleModeNotice');
+  const legend   = document.getElementById('designsLegend');
+  if (isSingleMode()){
+    // Merge dark → light and hide dark panel
+    mergeDarkIntoLight();
+    renderSaved('light', document.getElementById('lightSaved'));
+    renderSaved('dark',  document.getElementById('darkSaved')); // will be empty
+    if (darkCard) darkCard.style.display = 'none';
+    if (notice)   notice.style.display = 'block';
+    if (legend)   legend.textContent = 'Design (single)';
+  }else{
+    // Show both
+    if (darkCard) darkCard.style.display = '';
+    if (notice)   notice.style.display = 'none';
+    if (legend)   legend.textContent = 'Designs';
+  }
+}
+
 
 function addCurrentSelection(side, selectEl){
   if (!selectEl) return;
