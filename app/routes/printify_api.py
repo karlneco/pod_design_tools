@@ -1,14 +1,26 @@
 import json
+import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
 from .. import config, Config
 from ..extensions import store, printify_client as printify
 
 bp = Blueprint("printify_api", __name__)
 PRINTIFY_PRODUCTS_COLLECTION = "printify_products"
+
+
+def _to_bool(param):
+    if isinstance(param, bool):
+        return param
+    if isinstance(param, (int, float)):
+        return param != 0
+    if isinstance(param, str):
+        return param.strip().lower() in ("1", "true", "yes", "y", "on")
+    return False
 
 
 @bp.get("/printify/colors/<product_id>")
@@ -207,7 +219,7 @@ def api_printify_duplicate():
     return jsonify({"ok": True, "created": created}), 201
 
 
-@bp.post("/api/printify/templates/<product_id>/extract_colors")
+@bp.post("/printify/templates/<product_id>/extract_colors")
 def api_printify_extract_colors(product_id: str):
     """
     Load a template product from Printify and persist its color set (with hex)
@@ -271,4 +283,608 @@ def api_printify_extract_colors(product_id: str):
         "message": "Colors extracted.",
         "path": str(out_path.relative_to(Config.BASE_DIR)),
         "count": len(colors_out)
+    })
+
+
+@bp.post("/printify/products/<product_id>/apply_design")
+def apply_design(product_id):
+    """
+    Form-data or JSON:
+      - which: "light"|"dark" (required)
+      - file: (optional) image file to upload
+      - use_saved: "1"|"true" (optional) to use /data/designs/<product_id>/<which>.* if no file provided
+    Returns: { image_id, src, product }
+    """
+    which = (request.form.get("which") or request.json.get("which") if request.is_json else None)
+    if which not in ("light", "dark"):
+        return jsonify({"error": "which must be 'light' or 'dark'"}), 400
+
+    # Determine source image
+    upload_file = request.files.get("file")
+    use_saved = (request.form.get("use_saved") or "").lower() in ("1", "true") if upload_file is None else False
+    local_path = None
+
+    if upload_file is None and use_saved:
+        base = Path("data/designs") / str(product_id)
+        for p in base.glob(f"{which}.*"):
+            if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
+                local_path = str(p)
+                break
+        if not local_path:
+            return jsonify({"error": "No saved design file found"}), 404
+
+    # Upload to Printify
+    if upload_file is not None:
+        # Save temp
+        tmp = Path("data/tmp");
+        tmp.mkdir(parents=True, exist_ok=True)
+        tmp_path = tmp / upload_file.filename
+        upload_file.save(tmp_path)
+        up = printify.upload_image_file(file_path=str(tmp_path), file_name=upload_file.filename)
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+    else:
+        up = printify.upload_image_file(file_path=local_path, file_name=Path(local_path).name)
+
+    image_id = up.get("id")
+    if not image_id:
+        return jsonify({"error": "Upload to Printify failed", "detail": up}), 400
+
+    # Load product then set FRONT placeholder to this image
+    prod = printify.get_product(product_id)
+    patch = printify.ensure_front_with_image(prod, image_id=image_id, x=0.5, y=0.5, scale=1.0, angle=0)
+    printify.update_product(product_id, patch)
+
+    # Re-fetch to get resolved mockup src (Printify echoes image entries with 'src')
+    updated = printify.get_product(product_id)
+
+    # Try to find an 'src' for our image_id on front
+    src = None
+    for pa in (updated.get("print_areas") or []):
+        for ph in (pa.get("placeholders") or []):
+            if (ph.get("position") or "").lower() != "front":
+                continue
+            for img in (ph.get("images") or []):
+                if str(img.get("id")) == str(image_id):
+                    src = img.get("src") or img.get("url")
+                    break
+
+    return jsonify({"image_id": image_id, "src": src, "product": updated})
+
+
+@bp.post("/printify/ai/generate_metadata")
+def ai_generate_metadata():
+    """
+    Body:
+    {
+      "product_id": "...",
+      "images": ["data:image/jpeg;base64,...", "/designs/...png", "https://..."],
+      "title_hint": "...",
+      "collections": [...],
+      "colors": [{"title":"Black","hex":"#000000"}, ...]
+    }
+    """
+    from openai import OpenAI
+    import base64, mimetypes, re
+
+    body = request.get_json(force=True)
+    pid = body.get("product_id")
+    title_hint = body.get("title_hint", "")
+    colors = body.get("colors", [])
+    incoming_images = body.get("images", []) or []
+
+    # Prefer explicitly provided images array.
+    incoming_images = body.get("images", []) or []
+
+    # Filter out the default logo by id if it sneaks in as a Printify URL with that id (we'll also filter later).
+    def is_default_logo_url(u: str) -> bool:
+        # heuristic: if URL contains the known default id; adjust if your CDN path differs
+        return isinstance(u, str) and Config.DEFAULT_FRONT_IMAGE_ID in u
+
+    DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp);base64,", re.IGNORECASE)
+
+    def as_image_part(url_or_data: str | None):
+        """
+        Accept:
+          - data URLs (already jpeg/png/webp)
+          - http(s) URLs
+          - /designs/... (local path we can embed)
+        Return an OpenAI image part or None.
+        """
+        if not url_or_data:
+            return None
+        try:
+            s = str(url_or_data)
+            # data URL (already encoded) -> pass through
+            if DATA_URL_RE.match(s):
+                return {"type": "image_url", "image_url": {"url": s}}
+
+            # remote URL
+            if s.startswith("http://") or s.startswith("https://"):
+                return {"type": "image_url", "image_url": {"url": s}}
+
+            # local saved design
+            if s.startswith("/designs/"):
+                from pathlib import Path
+                file_path = Path("." + s)
+                if not file_path.exists():
+                    return None
+                b64 = base64.b64encode(file_path.read_bytes()).decode("utf-8")
+                mime = mimetypes.guess_type(file_path.name)[0] or "image/jpeg"
+                return {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+        except Exception:
+            pass
+        return None
+
+    imgs = [as_image_part(x) for x in incoming_images]
+    imgs = [x for x in imgs if x]
+
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    prompt_text = f"""
+    You are a creative copywriter for a Japanese travel-inspired apparel brand.
+    You will be given 0–2 design images. If images are present, you MUST ground your copy
+    in what you SEE: motifs, vibe, era, attitude, palette, mood. Do NOT literally describe
+    small details or list elements; write a short emotional hook.
+
+    Write HTML with this structure:
+    - <h2>Headline</h2> — 2–6 evocative words (not just the product name)
+    - <p class="p4">Body</p> — 2–4 sentences max. Focus on vibe, place, feeling.
+      Use <span class="s2"><b>...</b></span> to highlight 1–3 key terms. Add 2–3 fitting emojis.
+      Do NOT restate the artwork literally; no “this design shows …”.
+
+    Return STRICT JSON ONLY:
+    {{
+      "title": "Short catchy product name",
+      "description_html": "<h2>…</h2><p class='p4'>…</p>",
+      "tags": ["keyword1","keyword2","keyword3","keyword4","keyword5"]
+    }}
+
+    Context:
+    - Title hint: {title_hint or 'none'}
+    - Selected color names: {', '.join([c.get('title', '') for c in colors]) or 'none'}
+    - Collection: {', '.join(body.get('collections') or []) or 'general'}
+    """
+
+    messages = [
+        {"role": "system", "content": "You are an expert copywriter for Japanese travel-themed apparel."},
+        {"role": "user", "content": [{"type": "text", "text": prompt_text}] + imgs},
+    ]
+
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.6,
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(resp.choices[0].message.content)
+        data["_debug_images_attached"] = len(imgs)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e), "_debug_images_attached": len(imgs)}), 400
+
+
+@bp.post("/printify/products/<product_id>/save")
+def api_printify_save(product_id):
+    """
+    Body (JSON):
+    {
+      "title": "New title",
+      "description": "<h2>..</h2><p class='p4'>..</p>",
+      "single_mode": true|false,
+      "saved_light": [{"title":"Black","hex":"#000000"}, ...],
+      "saved_dark":  [{"title":"White","hex":"#ffffff"}, ...]
+    }
+    Logic:
+      - Reads local saved designs at data/designs/<product_id>/light.* and dark.* (if exist).
+      - Uploads present files to Printify to get image_ids (skips DEFAULT_LOGO_ID).
+      - Maps color titles -> variant_ids via product.options + variants.
+      - Builds FRONT print_areas: one (single_mode) or two (split buckets).
+      - PUTs {'title','description','print_areas'} to Printify.
+      - Returns updated product JSON.
+    """
+    body = request.get_json(force=True) or {}
+    title = body.get("title", "")
+    description = body.get("description", "")
+    single_mode = bool(body.get("single_mode", False))
+    saved_default = body.get("saved_light") or []
+    saved_other = body.get("saved_dark") or []
+
+    try:
+        prod = printify.get_product(product_id)
+    except Exception as e:
+        return jsonify({"error": f"Failed to load product: {e}"}), 400
+
+    # 1) Upload local design files if present (robust path & verbose logging)
+    ALLOWED_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+    log = current_app.logger or logging.getLogger(__name__)
+
+    def _candidate_design_dirs(pid: str) -> list[Path]:
+        """
+        Return a few candidate absolute directories where uploads may have been saved.
+        Your /api/designs/upload route uses Path("data/designs") relative to the CWD,
+        so we check that as well as paths relative to the Flask app root.
+        """
+        root = Path(current_app.root_path).resolve()
+        # project root is usually one up from app/
+        proj_root = root.parent
+        return [
+            proj_root / "data" / "designs" / pid,  # <project>/data/designs/<id>
+            root / "data" / "designs" / pid,  # <project>/app/data/designs/<id> (fallback)
+            Path("data/designs") / pid,  # CWD-relative fallback
+        ]
+
+    def _debug_list_dir(p: Path):
+        try:
+            if p.exists():
+                items = [f.name for f in p.iterdir()]
+                log.info("[SAVE] Dir exists %s: %r", str(p), items)
+            else:
+                log.info("[SAVE] Dir missing %s", str(p))
+        except Exception as e:
+            log.warning("[SAVE] Could not list %s: %s", str(p), e)
+
+    def find_local(pid: str, which: str) -> Path | None:
+        """
+        Search multiple locations for 'light.*' or 'dark.*'.
+        Case-insensitive extension match; only allow image types.
+        """
+        for base_dir in _candidate_design_dirs(pid):
+            _debug_list_dir(base_dir)
+            if not base_dir.exists():
+                continue
+            # try exact pattern first
+            for p in base_dir.glob(f"{which}.*"):
+                if p.suffix.lower() in ALLOWED_EXTS:
+                    log.info("[SAVE] Found %s file at %s", which, str(p))
+                    return p
+            # case-insensitive scan fallback
+            for p in base_dir.iterdir():
+                if not p.is_file():
+                    continue
+                name = p.name.lower()
+                if name.startswith(which.lower() + ".") and Path(name).suffix.lower() in ALLOWED_EXTS:
+                    log.info("[SAVE] Found (case-insensitive) %s file at %s", which, str(p))
+                    return p
+        log.info("[SAVE] No local %s file found for product %s", which, pid)
+        return None
+
+    def ensure_upload(path: Path | None) -> str | None:
+        """
+        Upload a local file to Printify and return its image id.
+        Logs path, size, and response for debugging.
+        """
+        if not path:
+            return None
+        try:
+            size = path.stat().st_size
+        except Exception:
+            size = -1
+        log.info("[SAVE] Uploading %s (%s bytes)", str(path), size)
+        try:
+            up = printify.upload_image_file(file_path=str(path), file_name=path.name)
+            iid = up.get("id")
+            log.info("[SAVE] Uploaded %s => image_id=%s", path.name, iid)
+            return iid
+        except Exception as e:
+            log.error("[SAVE] Upload failed for %s: %s", str(path), e)
+            return None
+
+    default_image_path = find_local(str(product_id), "light")
+    dark_path = None if single_mode else find_local(str(product_id), "dark")
+
+    default_img_id = ensure_upload(default_image_path)
+    dark_img_id = ensure_upload(dark_path)
+
+    # Fallbacks: if no uploaded images, try to reuse existing non-default FRONT images from product.
+    DEFAULT_ID = getattr(Config, "DEFAULT_FRONT_IMAGE_ID", None)
+
+    def _first_non_default_front_image(prod_json) -> str | None:
+        for pa in (prod_json.get("print_areas") or []):
+            for ph in (pa.get("placeholders") or []):
+                if (ph.get("position") or "").strip().lower() != "front":
+                    continue
+                for img in (ph.get("images") or []):
+                    iid = str(img.get("id") or "")
+                    if not iid:
+                        continue
+                    if DEFAULT_ID and iid == str(DEFAULT_ID):
+                        continue
+                    return iid
+        return None
+
+    if not default_img_id:
+        default_img_id = _first_non_default_front_image(prod)
+        if default_img_id:
+            log.info("[SAVE] Reusing existing FRONT image for light bucket: %s", default_img_id)
+    if not single_mode and not dark_img_id:
+        # For dual-mode, if we still have no dark image, reuse same as light (at least to satisfy validator)
+        if default_img_id:
+            dark_img_id = default_img_id
+            log.info("[SAVE] Reusing light image id for dark bucket: %s", dark_img_id)
+
+    # 2) Build color title -> variant_ids mapping
+    # Get color titles from options[type='color']
+    color_titles = set()
+    for opt in (prod.get("options") or []):
+        if (opt.get("type") == "color") or (str(opt.get("name", "")).lower() == "colors"):
+            for v in (opt.get("values") or []):
+                color_titles.add(str(v.get("title") or "").strip())
+
+    def variant_color_title(var: dict) -> str | None:
+        # variants often carry a 'title' like 'Black / M' OR options list/dict
+        opts = var.get("options")
+        if isinstance(opts, dict):
+            cand = opts.get("color") or opts.get("Color") or opts.get("colour") or opts.get("Colour")
+            if cand: return str(cand).strip()
+        elif isinstance(opts, list):
+            for o in opts:
+                try:
+                    if (o.get("name") or "").strip().lower() in ("color", "colour"):
+                        t = o.get("value") or o.get("title")
+                        if t: return str(t).strip()
+                except AttributeError:
+                    pass
+        t = var.get("title") or ""
+        if " / " in t:
+            return t.split(" / ")[0].strip()
+        return None
+
+    # gather variant ids by color title (enabled only)
+    all_variants_by_color = {}
+    for v in (prod.get("variants") or []):
+        ct = variant_color_title(v)
+        if not ct: continue
+        all_variants_by_color.setdefault(ct, []).append(int(v["id"]))
+
+    # Helpers to collect variant_ids from saved color pills
+    def variant_ids_for(pills: list[dict]) -> list[int]:
+        out = []
+        for c in (pills or []):
+            t = str(c.get("title") or "").strip()
+            if not t: continue
+            out.extend(all_variants_by_color.get(t, []))
+        # de-dup preserve order
+        seen = set();
+        uniq = []
+        for x in out:
+            if x in seen: continue
+            seen.add(x);
+            uniq.append(x)
+        return uniq
+
+    enabled_default_vids = variant_ids_for(saved_default)
+
+    # This will be the list of lists for all other colors as each needs its own placement
+    enabled_other_vids = []
+    if not single_mode:
+        for c in saved_other:
+            enabled_other_vids.append(variant_ids_for([c]))
+
+
+    # Fallbacks if user hasn't picked any colors yet:
+    if single_mode:
+        if not enabled_default_vids:
+            # use all enabled variants
+            enabled_default_vids = [int(v["id"]) for v in (prod.get("variants") or []) if v.get("is_enabled", True)]
+    else:
+        # If one side empty, try infer from white vs others (optional simple fallback)
+        if not enabled_default_vids and saved_default:
+            enabled_default_vids = variant_ids_for(saved_default)
+        if not enabled_other_vids and saved_other:
+            enabled_other_vids = variant_ids_for(saved_other)
+
+    # 3) Rebuild print_areas with variant-set buckets:
+    #    - For each unique variant set, collect all placeholders (neck, sleeve, etc.)
+    #      AND add our new front placeholders if applicable.
+
+    def _slim_images(imgs: list[dict]) -> list[dict]:
+        """Keep only real image assets (drop text layers)."""
+        out = []
+        for img in (imgs or []):
+            iid = img.get("id")
+            if not iid:
+                continue
+            t = (img.get("type") or "").lower()
+            if t.startswith("text/") or ("input_text" in img):
+                continue
+            has_real_asset = bool(img.get("src") or img.get("url") or img.get("name"))
+            if not has_real_asset:
+                continue
+            out.append({
+                "id": iid,
+                "x": float(img.get("x", 0.5)),
+                "y": float(img.get("y", 0.5)),
+                "scale": float(img.get("scale", 1.0)),
+                "angle": int(float(img.get("angle", 0))),
+            })
+        return out
+
+    all_selected_variant_ids = (enabled_default_vids +
+                                [vid for color_variants in enabled_other_vids for vid in color_variants])
+
+    all_variants_direct = [int(v["id"]) for v in (prod.get("variants") or [])]  # why do we need this again?
+    all_variants_direct_sorted = sorted(all_variants_direct)
+
+    # Build a map: tuple(sorted(variant_ids)) -> {"variant_ids":[...], "placeholders":[...]}
+    areas_by_set: dict[tuple[int, ...], dict] = {}
+
+    # 3a. Create buckets from color selections and add the front image to those buckets
+    def _get_bucket(vids: list[int]) -> dict:
+        key = tuple(sorted(int(x) for x in vids))
+        if key not in areas_by_set:
+            areas_by_set[key] = {"variant_ids": list(key), "placeholders": []}
+        return areas_by_set[key]
+
+    def _add_front_to_variants(vids: list[int], image_id: str | None):
+        if not image_id or not vids:
+            return
+        bucket = _get_bucket(vids)
+        bucket["placeholders"].append({
+            "position": "front",
+            "images": [{
+                "id": image_id,
+                "x": 0.5,
+                "y": 0.5,
+                "scale": 1.1375559820857382,
+                "angle": 0
+            }]
+        })
+
+    have_any_image = bool(default_img_id or dark_img_id)
+    if have_any_image:
+        if single_mode:
+            _add_front_to_variants(all_variants_direct_sorted, (default_img_id or dark_img_id))
+        else:
+            assigned_vids = set(all_selected_variant_ids)
+            unassigned = [vid for vid in all_variants_direct_sorted if
+                          vid not in assigned_vids]
+
+            assigned_default_vids = enabled_default_vids + unassigned
+            bucket = _get_bucket(assigned_default_vids)
+            _add_front_to_variants(assigned_default_vids, default_img_id)
+
+            for one_color_vids in enabled_other_vids:
+                bucket = _get_bucket(one_color_vids)
+                _add_front_to_variants(one_color_vids, dark_img_id)
+
+    # 3a. Preserve all non-front placeholders (neck, sleeve, etc.)
+    for area in (prod.get("print_areas") or []):
+        for bucket in areas_by_set.values():
+            bucket = _get_bucket(bucket["variant_ids"])
+            for ph in (area.get("placeholders") or []):
+                pos = (ph.get("position") or "").strip().lower()
+                if pos == "front":
+                    continue
+                slim = _slim_images(ph.get("images") or [])
+                if not slim:
+                    continue
+                slim_ph = {"position": ph.get("position"), "images": slim}
+                if ph.get("decoration_method"):
+                    slim_ph["decoration_method"] = ph["decoration_method"]
+                bucket["placeholders"].append(slim_ph)
+
+    # 3c. Build final merged list — one element per unique variant set
+    merged_areas = [v for v in areas_by_set.values() if v.get("placeholders")]
+
+    # Ensure coverage: union of variant_ids across ALL areas should cover all enabled variants.
+    def _covered(areas):
+        s = set()
+        for a in (areas or []):
+            for vid in (a.get("variant_ids") or []):
+                try:
+                    s.add(int(vid))
+                except Exception:
+                    pass
+        return s
+
+    include_print_areas = False
+    if merged_areas:
+        covered = _covered(merged_areas)
+        missing = [vid for vid in unassigned if vid not in covered]
+        if missing and (default_img_id or dark_img_id):
+            # add a final FRONT-only area for missing variants (use whatever image we have)
+            merged_areas.append({
+                "variant_ids": sorted(missing),
+                "placeholders": [{
+                    "position": "front",
+                    "images": [{
+                        "id": (default_img_id or dark_img_id),
+                        "x": 0.5, "y": 0.5, "scale": 1.1375559820857382, "angle": 0
+                    }]
+                }]
+            })
+            include_print_areas = True
+        else:
+            include_print_areas = True
+
+    # Collect every variant id referenced by the print_areas we’re about to send
+    def _variant_ids_from_print_areas(areas: list[dict]) -> set[int]:
+        out = set()
+        for a in (areas or []):
+            for vid in (a.get("variant_ids") or []):
+                try:
+                    out.add(int(vid))
+                except:
+                    pass
+        return out
+
+    must_enable = _variant_ids_from_print_areas(merged_areas)
+
+    def _coerce_int(x, default=0):
+        try:
+            return int(str(x))
+        except Exception:
+            return default
+
+    # We'll now update the variant list with what's actually enabled.
+    # Keep a generous set of keys that the API tolerates.
+    # (Printify ignores unknown fields, but these are commonly present/accepted.)
+    _allowed_variant_keys = {
+        "id", "price", "is_enabled", "sku", "options", "is_default", "title", "grams"
+        }
+
+    must_enable = all_selected_variant_ids
+    variants_patch = []
+    for v in (prod.get("variants") or []):
+        vv = dict(v)  # shallow copy of original
+        vv["id"] = _coerce_int(v.get("id"))
+        # price must be an int (cents). Keep original; DO NOT invent prices.
+        if "price" in v:
+            vv["price"] = _coerce_int(v["price"])
+        # In case some providers don’t return price (rare), fall back to 0 to satisfy schema.
+        # (Ideally you never hit this path; better to read price from the template product.)
+        else:
+            vv["price"] = 0
+
+        # enable if referenced by any print_areas; otherwise keep as-is
+        vv["is_enabled"] = True if vv["id"] in must_enable else bool(v.get("is_enabled", False))
+
+        # trim to allowed keys to avoid noisy payloads
+        vv = {k: vv[k] for k in _allowed_variant_keys if k in vv}
+        variants_patch.append(vv)
+
+    # include in the outgoing patch
+    patch = {"title": title, "description": description}
+    if include_print_areas:
+        patch["print_areas"] = merged_areas
+    patch["variants"] = variants_patch
+
+    # Debug: log what we’re about to send
+    try:
+        current_app.logger.info(
+            "SAVE debug: include_print_areas=%s areas_sent=%s have_any_image=%s light_img_id=%s dark_img_id=%s",
+            include_print_areas, len(patch.get("print_areas", [])),
+            bool(default_img_id or dark_img_id), bool(default_img_id), bool(dark_img_id)
+        )
+    except Exception:
+        pass
+
+    # If absolutely nothing to update, bail clearly (prevents returning None)
+    if not include_print_areas and (title.strip() == "" and description.strip() == ""):
+        return jsonify({"error": "Nothing to save: no title/description changes and no print_areas to update."}), 400
+
+    # Perform the update and always return a response
+    try:
+        updated_meta = printify.update_product(product_id, patch)
+    except Exception as e:
+        return jsonify({"error": str(e), "payload": patch}), 400
+
+    # Try to fetch the refreshed product; fall back to the update response if fetch fails
+    try:
+        refreshed = printify.get_product(product_id)
+    except Exception:
+        refreshed = updated_meta
+
+    return jsonify({
+        "ok": True,
+        "product": refreshed,
+        "sent": {
+            "title": patch.get("title"),
+            "description": bool(patch.get("description")),
+            "print_areas_count": len(patch.get("print_areas", []))
+        }
     })

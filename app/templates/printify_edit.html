@@ -35,20 +35,21 @@
             border: 1px solid #bbb;
         }
 
-            .preview-card {
-              position: relative;            /* anchor for absolute button */
-              border: 1px solid #e6e6e6;
-              border-radius: 10px;
-              padding: 1rem;
-              background: #fafafa;
-            }
-            .remove-panel-btn{
-              position: absolute;
-              top: .5rem;                    /* tweak as you like */
-              right: .5rem;
-              padding: .35rem .6rem;
-              font-size: .85rem;
-            }
+        .preview-card {
+            position: relative; /* anchor for absolute button */
+            border: 1px solid #e6e6e6;
+            border-radius: 10px;
+            padding: 1rem;
+            background: #fafafa;
+        }
+
+        .remove-panel-btn {
+            position: absolute;
+            top: .5rem; /* tweak as you like */
+            right: .5rem;
+            padding: .35rem .6rem;
+            font-size: .85rem;
+        }
 
         .canvas-wrap {
             width: 100%;
@@ -151,15 +152,15 @@
         </section>
 
         <fieldset style="margin-top:1rem;">
-          <legend id="designsLegend">Designs</legend>
-          <div id="singleModeNotice" style="display:none;margin:.25rem 0 .75rem 0;">
-            <small>
-              Single design mode is ON.
-              <button type="button" id="restoreDarkPanelBtn" class="secondary" style="margin-left:.5rem;">
-                Restore second design panel
-              </button>
-            </small>
-          </div>
+            <legend id="designsLegend">Designs</legend>
+            <div id="singleModeNotice" style="display:none;margin:.25rem 0 .75rem 0;">
+                <small>
+                    Single design mode is ON.
+                    <button type="button" id="restoreDarkPanelBtn" class="secondary" style="margin-left:.5rem;">
+                        Restore second design panel
+                    </button>
+                </small>
+            </div>
 
             <div class="row-2col">
                 <!-- Light design -->
@@ -203,7 +204,7 @@
                 <div class="preview-card">
                     <h4>For Light Shirts</h4>
                     <button type="button" id="removeDarkPanelBtn" class="secondary remove-panel-btn">
-                      Remove Panel
+                        Remove Panel
                     </button>
                     <div class="canvas-wrap" id="darkCanvas" style="background:#ffffff;">
                         {% if p.dark_url %}
@@ -219,7 +220,7 @@
                         </label>
                     </div>
                     <div style="margin-top:.5rem;">
-                      <div id="darkSaved" class="saved-pills"></div>
+                        <div id="darkSaved" class="saved-pills"></div>
                     </div>
                     <div style="margin-top:.5rem;">
                         <label>Preview on color</label>
@@ -247,9 +248,15 @@
             </div>
             <div id="recs" style="margin-top:.5rem;"></div>
         </fieldset>
+        <fieldset style="margin-top:1rem;">
+            <legend>AI Product Info</legend>
+            <button type="button" id="generateInfoBtn">Generate Product Info (AI)</button>
+            <div id="aiInfoResult" style="margin-top:.5rem;"></div>
+        </fieldset>
 
         <div style="margin-top:1rem;">
-            <button type="button" onclick="save()">Save (coming soon)</button>
+            <button type="button" id="saveBtn">Save</button>
+            <small id="saveStatus" class="muted" style="margin-left:.5rem;"></small>
         </div>
     </form>
 
@@ -267,24 +274,104 @@
 </main>
 
 <script>
-// === Saved color sets per design (light/dark), persisted in localStorage ===
-const PRODUCT_ID = document.querySelector('input[name="id"]').value;
+    // === Saved color sets per design (light/dark), persisted in localStorage ===
+    const PRODUCT_ID = document.querySelector('input[name="id"]').value;
 
-// --- Single design mode persistence ---
-const SINGLE_KEY = (pid)=> `kd:singleDesign:${pid}`;
-function isSingleMode(){ try { return localStorage.getItem(SINGLE_KEY(PRODUCT_ID)) === '1'; } catch { return false; } }
-function setSingleMode(on){
-  try { if(on) localStorage.setItem(SINGLE_KEY(PRODUCT_ID),'1'); else localStorage.removeItem(SINGLE_KEY(PRODUCT_ID)); } catch {}
-}
+    // --- Single design mode persistence ---
+    const SINGLE_KEY = (pid) => `kd:singleDesign:${pid}`;
 
-// Seed data coming from server for existing product:
-const INITIAL_SAVED_LIGHT = {{ p.initial_saved_light | tojson }};
-const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
+    function isSingleMode() {
+        try {
+            return localStorage.getItem(SINGLE_KEY(PRODUCT_ID)) === '1';
+        } catch {
+            return false;
+        }
+    }
+
+    function setSingleMode(on) {
+        try {
+            if (on) localStorage.setItem(SINGLE_KEY(PRODUCT_ID), '1'); else localStorage.removeItem(SINGLE_KEY(PRODUCT_ID));
+        } catch {
+        }
+    }
+
+    // Seed data coming from server for existing product:
+    const INITIAL_SAVED_LIGHT = {{ p.initial_saved_light | tojson }};
+    const INITIAL_SAVED_DARK = {{ p.initial_saved_dark  | tojson }};
 
 
-    // We'll wire this to an update endpoint next iteration
-    function save() {
-        alert('Saving not wired yet — next step!');
+    async function save() {
+        const pid = document.querySelector('input[name="id"]').value;
+        const saveBtn = document.getElementById('saveBtn');
+        const saveStatus = document.getElementById('saveStatus');
+        const title = document.querySelector('input[name="title"]').value || '';
+        const description = document.querySelector('textarea[name="description"]').value || '';
+
+        // Pull the current saved color selections from localStorage
+        const saved = loadSaved(pid); // { light: [...], dark: [...] }
+
+        // Build files FormData if any are present
+        const fd = new FormData();
+        fd.append('product_id', pid);
+        const lf = document.getElementById('lightFile')?.files?.[0] || null;
+        const df = document.getElementById('darkFile')?.files?.[0] || null;
+        if (lf) fd.append('light', lf);
+        if (df && !isSingleMode()) fd.append('dark', df); // ignore dark file in single mode
+
+        // UX: disable & show status
+        if (saveBtn) saveBtn.disabled = true;
+        if (saveStatus) saveStatus.textContent = 'Saving…';
+
+        try {
+            // 1) Upload images if provided (this writes to data/designs/<id>/<which>.*)
+            //    We do this unconditionally so the backend can find & upload to Printify.
+            if (lf || (df && !isSingleMode())) {
+                const up = await fetch('/api/designs/upload', {method: 'POST', body: fd});
+                const upData = await up.json();
+                if (!up.ok) throw new Error(upData?.error || 'Upload failed');
+                // Optional: console breadcrumb
+                console.log('[SAVE] /api/designs/upload ->', upData);
+            }
+
+            // 2) Call Printify save (this endpoint will pick up local files, upload to Printify, and PATCH product)
+            const body = {
+                title,
+                description,
+                single_mode: isSingleMode(),
+                saved_light: Array.isArray(saved.light) ? saved.light : [],
+                saved_dark: isSingleMode() ? [] : (Array.isArray(saved.dark) ? saved.dark : [])
+            };
+
+            const res = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/save`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.error('[SAVE] Printify save error', data);
+                throw new Error(data?.error || 'Save failed');
+            }
+
+            // Success UI
+            if (saveStatus) saveStatus.textContent = 'Saved!';
+            console.log('[SAVE] Updated product ->', data);
+            // Optional: update raw JSON block without reload
+            const rawEl = document.getElementById('rawJson');
+            if (rawEl && data?.product) {
+                rawEl.textContent = JSON.stringify(data.product, null, 2);
+            }
+        } catch (e) {
+            if (saveStatus) saveStatus.textContent = `Error: ${e.message || e}`;
+            alert(`Save error: ${e.message || e}`);
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
+            // Clear the “…Saving” status after a moment
+            setTimeout(() => {
+                if (saveStatus && saveStatus.textContent === 'Saved!') saveStatus.textContent = '';
+            }, 1500);
+        }
     }
 
     function copyRaw() {
@@ -320,20 +407,21 @@ const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
                 return `<div style="margin-top:.25rem;"><strong>${label}:</strong> ${pills || '<em>n/a</em>'}</div>`;
             };
 
-              if (isSingleMode()){
+            if (isSingleMode()) {
                 // collapse to one bucket (union of light+dark, dedup by title|hex)
-                const union = [...(data.light||[]), ...(data.dark||[])];
+                const union = [...(data.light || []), ...(data.dark || [])];
                 const seen = new Set();
                 const uniq = [];
-                for (const c of union){
-                  const key = (c.title||'')+'|'+String(c.hex||'').toLowerCase();
-                  if (seen.has(key)) continue;
-                  seen.add(key); uniq.push(c);
+                for (const c of union) {
+                    const key = (c.title || '') + '|' + String(c.hex || '').toLowerCase();
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    uniq.push(c);
                 }
                 out.innerHTML = mk('Single-design picks', uniq);
-              }else{
+            } else {
                 out.innerHTML = mk('Light-design picks', data.light) + mk('Dark-design picks', data.dark);
-              }
+            }
         } catch (e) {
             out.textContent = e.message;
         }
@@ -432,24 +520,24 @@ const INITIAL_SAVED_DARK  = {{ p.initial_saved_dark  | tojson }};
     }
 
     // --- Single design mode buttons ---
-const removeDarkPanelBtn  = document.getElementById('removeDarkPanelBtn');
-const restoreDarkPanelBtn = document.getElementById('restoreDarkPanelBtn');
+    const removeDarkPanelBtn = document.getElementById('removeDarkPanelBtn');
+    const restoreDarkPanelBtn = document.getElementById('restoreDarkPanelBtn');
 
-if (removeDarkPanelBtn){
-  removeDarkPanelBtn.addEventListener('click', ()=>{
-    setSingleMode(true);
-    applySingleModeUI();
-  });
-}
-if (restoreDarkPanelBtn){
-  restoreDarkPanelBtn.addEventListener('click', ()=>{
-    setSingleMode(false);
-    applySingleModeUI();
-  });
-}
+    if (removeDarkPanelBtn) {
+        removeDarkPanelBtn.addEventListener('click', () => {
+            setSingleMode(true);
+            applySingleModeUI();
+        });
+    }
+    if (restoreDarkPanelBtn) {
+        restoreDarkPanelBtn.addEventListener('click', () => {
+            setSingleMode(false);
+            applySingleModeUI();
+        });
+    }
 
-// Apply initial state on page load
-applySingleModeUI();
+    // Apply initial state on page load
+    applySingleModeUI();
 
 
     // --- Clickable template-color pills -> set both previews & sync selects ---
@@ -495,153 +583,316 @@ applySingleModeUI();
         });
     }
 
-function storageKey(pid){ return `kd:designColors:${pid}`; }
-
-function loadSaved(pid){
-  try {
-    const existing = JSON.parse(localStorage.getItem(storageKey(pid)));
-    if (existing && (Array.isArray(existing.light) || Array.isArray(existing.dark))) {
-      return { light: existing.light || [], dark: existing.dark || [] };
+    function storageKey(pid) {
+        return `kd:designColors:${pid}`;
     }
-  } catch {}
-  // seed from server once
-  const seeded = { light: INITIAL_SAVED_LIGHT || [], dark: INITIAL_SAVED_DARK || [] };
-  try { localStorage.setItem(storageKey(pid), JSON.stringify(seeded)); } catch {}
-  return seeded;
-}
 
-function saveSaved(pid, data){
-  try { localStorage.setItem(storageKey(pid), JSON.stringify(data)); } catch {}
-}
+    function loadSaved(pid) {
+        try {
+            const existing = JSON.parse(localStorage.getItem(storageKey(pid)));
+            if (existing && (Array.isArray(existing.light) || Array.isArray(existing.dark))) {
+                return {light: existing.light || [], dark: existing.dark || []};
+            }
+        } catch {
+        }
+        // seed from server once
+        const seeded = {light: INITIAL_SAVED_LIGHT || [], dark: INITIAL_SAVED_DARK || []};
+        try {
+            localStorage.setItem(storageKey(pid), JSON.stringify(seeded));
+        } catch {
+        }
+        return seeded;
+    }
+
+    function saveSaved(pid, data) {
+        try {
+            localStorage.setItem(storageKey(pid), JSON.stringify(data));
+        } catch {
+        }
+    }
 
 
-function renderSaved(side, container){
-  const saved = loadSaved(PRODUCT_ID)[side] || [];
-  container.innerHTML = saved.map(c => {
-    const hex = normalizeHex(c.hex || '#ddd');
-    const title = c.title || '—';
-    return `<span class="pill clickable" data-hex="${hex}" data-title="${title}">
+    function renderSaved(side, container) {
+        const saved = loadSaved(PRODUCT_ID)[side] || [];
+        container.innerHTML = saved.map(c => {
+            const hex = normalizeHex(c.hex || '#ddd');
+            const title = c.title || '—';
+            return `<span class="pill clickable" data-hex="${hex}" data-title="${title}">
               <span class="swatch" style="background:${hex}"></span>${title}
               <span class="close" title="Remove">×</span>
             </span>`;
-  }).join(' ');
-}
-
-// Bind click handlers ONCE per container (event delegation)
-function wireSavedHandlers(side, container, canvasEl, selectEl){
-  if (container.dataset.wired === '1') return; // idempotent
-  container.dataset.wired = '1';
-  container.addEventListener('click', (e)=>{
-    const isClose = e.target.closest('.close');
-    const pill    = e.target.closest('.pill.clickable');
-    if (!pill) return;
-    const hex   = normalizeHex(pill.dataset.hex);
-    const title = pill.dataset.title || '—';
-
-    if (isClose){
-      const data = loadSaved(PRODUCT_ID);
-      data[side] = (data[side]||[]).filter(x => !(normalizeHex(x.hex)===hex && x.title===title));
-      saveSaved(PRODUCT_ID, data);
-      renderSaved(side, container); // re-render after delete
-      return;
+        }).join(' ');
     }
 
-    // Click pill: update ONLY this panel
-    setCanvasBg(canvasEl, hex);
-    if (selectEl){
-      for(const opt of selectEl.options){
-        if (normalizeHex(opt.value).toLowerCase() === hex.toLowerCase()){
-          selectEl.value = opt.value; break;
+
+    // --- Image helpers: turn file/blob into JPEG data URL ---
+    async function fileToJpegDataURL(file, quality = 0.9) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const jpeg = canvas.toDataURL('image/jpeg', quality);
+                    resolve(jpeg);
+                } catch (e) {
+                    reject(e);
+                }
+            };
+            img.onerror = reject;
+            const fr = new FileReader();
+            fr.onload = () => {
+                img.src = fr.result;
+            };
+            fr.onerror = reject;
+            fr.readAsDataURL(file);
+        });
+    }
+
+    // If the <img> is showing a blob: URL, try to read from its paired <input type="file">
+    async function fromImgOrInputToJPEG(imgEl, inputEl) {
+        try {
+            const src = imgEl && imgEl.src ? imgEl.src : null;
+            const file = inputEl && inputEl.files ? inputEl.files[0] : null;
+
+            if (file) {
+                return await fileToJpegDataURL(file, 0.9);
+            }
+            if (src && src.startsWith('data:')) {
+                // Already a data URL; convert to JPEG via canvas
+                const res = await fetch(src);
+                const blob = await res.blob();
+                return await fileToJpegDataURL(blob, 0.9);
+            }
+            if (src && src.startsWith('blob:')) {
+                // Try to fetch blob, then convert
+                const res = await fetch(src);
+                const blob = await res.blob();
+                return await fileToJpegDataURL(blob, 0.9);
+            }
+            if (src && (src.startsWith('/designs/') || src.startsWith('http://') || src.startsWith('https://'))) {
+                // Let backend handle local path or remote URL (no need to JPEG here)
+                return src;
+            }
+        } catch (e) {
+            console.warn('JPEG convert failed:', e);
         }
-      }
+        return null;
     }
-  });
-}
-
-function mergeDarkIntoLight(){
-  const data = loadSaved(PRODUCT_ID);
-  const light = Array.isArray(data.light) ? data.light.slice() : [];
-  const dark  = Array.isArray(data.dark) ? data.dark : [];
-  // dedupe by title|hex (case-insensitive for hex)
-  const seen = new Set(light.map(x => (x.title||'')+'|'+(String(x.hex||'').toLowerCase())));
-  dark.forEach(x=>{
-    const key = (x.title||'')+'|'+(String(x.hex||'').toLowerCase());
-    if(!seen.has(key)){ light.push({title:x.title, hex:x.hex}); seen.add(key); }
-  });
-  // sort A→Z by title
-  light.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-  data.light = light;
-  data.dark  = []; // clear dark bucket in single mode
-  saveSaved(PRODUCT_ID, data);
-}
-
-function applySingleModeUI(){
-  // pick the second preview card inside the two-column row, reliably
-  const cards = document.querySelectorAll('.row-2col .preview-card');
-  const darkCard = cards && cards.length > 1 ? cards[1] : null;
-  const notice   = document.getElementById('singleModeNotice');
-  const legend   = document.getElementById('designsLegend');
-  if (isSingleMode()){
-    // Merge dark → light and hide dark panel
-    mergeDarkIntoLight();
-    renderSaved('light', document.getElementById('lightSaved'));
-    renderSaved('dark',  document.getElementById('darkSaved')); // will be empty
-    if (darkCard) darkCard.style.display = 'none';
-    if (notice)   notice.style.display = 'block';
-    if (legend)   legend.textContent = 'Design (single)';
-  }else{
-    // Show both
-    if (darkCard) darkCard.style.display = '';
-    if (notice)   notice.style.display = 'none';
-    if (legend)   legend.textContent = 'Designs';
-  }
-}
 
 
-function addCurrentSelection(side, selectEl){
-  if (!selectEl) return;
-  const hex = normalizeHex(selectEl.value);
-  const title = selectEl.options[selectEl.selectedIndex]?.text || '—';
-  if (!hex) return;
-  const data = loadSaved(PRODUCT_ID);
-  const arr = data[side] = data[side] || [];
-  const exists = arr.some(x => normalizeHex(x.hex).toLowerCase() === hex.toLowerCase());
-  if (!exists){
-    arr.push({ title, hex });
-    // unique + A→Z
-    const seen = new Set();
-    data[side] = arr.filter(x=>{
-      const key = (x.title||'')+'|'+normalizeHex(x.hex).toLowerCase();
-      if (seen.has(key)) return false; seen.add(key); return true;
-    }).sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-    saveSaved(PRODUCT_ID, data);
-  }
-}
+    // Bind click handlers ONCE per container (event delegation)
+    function wireSavedHandlers(side, container, canvasEl, selectEl) {
+        if (container.dataset.wired === '1') return; // idempotent
+        container.dataset.wired = '1';
+        container.addEventListener('click', (e) => {
+            const isClose = e.target.closest('.close');
+            const pill = e.target.closest('.pill.clickable');
+            if (!pill) return;
+            const hex = normalizeHex(pill.dataset.hex);
+            const title = pill.dataset.title || '—';
 
-// Wire up per-side
-const lightSavedEl = document.getElementById('lightSaved');
-const darkSavedEl  = document.getElementById('darkSaved');
-const lightSaveBtn = document.getElementById('lightSaveColorBtn');
-const darkSaveBtn  = document.getElementById('darkSaveColorBtn');
+            if (isClose) {
+                const data = loadSaved(PRODUCT_ID);
+                data[side] = (data[side] || []).filter(x => !(normalizeHex(x.hex) === hex && x.title === title));
+                saveSaved(PRODUCT_ID, data);
+                renderSaved(side, container); // re-render after delete
+                return;
+            }
 
-renderSaved('light', lightSavedEl);
-renderSaved('dark',  darkSavedEl);
+            // Click pill: update ONLY this panel
+            setCanvasBg(canvasEl, hex);
+            if (selectEl) {
+                for (const opt of selectEl.options) {
+                    if (normalizeHex(opt.value).toLowerCase() === hex.toLowerCase()) {
+                        selectEl.value = opt.value;
+                        break;
+                    }
+                }
+            }
+        });
+    }
 
-wireSavedHandlers('light', lightSavedEl, document.getElementById('lightCanvas'), document.getElementById('lightColorSelect'));
-wireSavedHandlers('dark',  darkSavedEl,  document.getElementById('darkCanvas'),  document.getElementById('darkColorSelect'));
+    function mergeDarkIntoLight() {
+        const data = loadSaved(PRODUCT_ID);
+        const light = Array.isArray(data.light) ? data.light.slice() : [];
+        const dark = Array.isArray(data.dark) ? data.dark : [];
+        // dedupe by title|hex (case-insensitive for hex)
+        const seen = new Set(light.map(x => (x.title || '') + '|' + (String(x.hex || '').toLowerCase())));
+        dark.forEach(x => {
+            const key = (x.title || '') + '|' + (String(x.hex || '').toLowerCase());
+            if (!seen.has(key)) {
+                light.push({title: x.title, hex: x.hex});
+                seen.add(key);
+            }
+        });
+        // sort A→Z by title
+        light.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        data.light = light;
+        data.dark = []; // clear dark bucket in single mode
+        saveSaved(PRODUCT_ID, data);
+    }
 
-if (lightSaveBtn){
-  lightSaveBtn.addEventListener('click', ()=>{
-    addCurrentSelection('light', document.getElementById('lightColorSelect'));
+    function applySingleModeUI() {
+        // pick the second preview card inside the two-column row, reliably
+        const cards = document.querySelectorAll('.row-2col .preview-card');
+        const darkCard = cards && cards.length > 1 ? cards[1] : null;
+        const notice = document.getElementById('singleModeNotice');
+        const legend = document.getElementById('designsLegend');
+        if (isSingleMode()) {
+            // Merge dark → light and hide dark panel
+            mergeDarkIntoLight();
+            renderSaved('light', document.getElementById('lightSaved'));
+            renderSaved('dark', document.getElementById('darkSaved')); // will be empty
+            if (darkCard) darkCard.style.display = 'none';
+            if (notice) notice.style.display = 'block';
+            if (legend) legend.textContent = 'Design (single)';
+        } else {
+            // Show both
+            if (darkCard) darkCard.style.display = '';
+            if (notice) notice.style.display = 'none';
+            if (legend) legend.textContent = 'Designs';
+        }
+    }
+
+
+    function addCurrentSelection(side, selectEl) {
+        if (!selectEl) return;
+        const hex = normalizeHex(selectEl.value);
+        const title = selectEl.options[selectEl.selectedIndex]?.text || '—';
+        if (!hex) return;
+        const data = loadSaved(PRODUCT_ID);
+        const arr = data[side] = data[side] || [];
+        const exists = arr.some(x => normalizeHex(x.hex).toLowerCase() === hex.toLowerCase());
+        if (!exists) {
+            arr.push({title, hex});
+            // unique + A→Z
+            const seen = new Set();
+            data[side] = arr.filter(x => {
+                const key = (x.title || '') + '|' + normalizeHex(x.hex).toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            }).sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+            saveSaved(PRODUCT_ID, data);
+        }
+    }
+
+    // Wire up per-side
+    const lightSavedEl = document.getElementById('lightSaved');
+    const darkSavedEl = document.getElementById('darkSaved');
+    const lightSaveBtn = document.getElementById('lightSaveColorBtn');
+    const darkSaveBtn = document.getElementById('darkSaveColorBtn');
+
     renderSaved('light', lightSavedEl);
-  });
-}
-if (darkSaveBtn){
-  darkSaveBtn.addEventListener('click', ()=>{
-    addCurrentSelection('dark', document.getElementById('darkColorSelect'));
     renderSaved('dark', darkSavedEl);
-  });
+
+    wireSavedHandlers('light', lightSavedEl, document.getElementById('lightCanvas'), document.getElementById('lightColorSelect'));
+    wireSavedHandlers('dark', darkSavedEl, document.getElementById('darkCanvas'), document.getElementById('darkColorSelect'));
+
+    if (lightSaveBtn) {
+        lightSaveBtn.addEventListener('click', () => {
+            addCurrentSelection('light', document.getElementById('lightColorSelect'));
+            renderSaved('light', lightSavedEl);
+        });
+    }
+    if (darkSaveBtn) {
+        darkSaveBtn.addEventListener('click', () => {
+            addCurrentSelection('dark', document.getElementById('darkColorSelect'));
+            renderSaved('dark', darkSavedEl);
+        });
+    }
+
+    document.getElementById('generateInfoBtn').addEventListener('click', async () => {
+        const out = document.getElementById('aiInfoResult');
+        out.textContent = 'Preparing images…';
+        const pid = PRODUCT_ID;
+
+        // Helper: upload & place this side if needed; returns usable URL (Printify src) or null
+        async function ensureUploaded(side, imgEl, fileInput) {
+            // If user selected a new file right now, send that to the server
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                const fd = new FormData();
+                fd.append('which', side);
+                fd.append('file', fileInput.files[0]);
+                const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
+                    method: 'POST', body: fd
+                });
+                const j = await r.json();
+                if (!r.ok) throw new Error(j.error || 'Upload failed');
+                return j.src || null;
+            }
+            // If we already saved a file earlier (/designs/<id>/<side>.*), ask server to use_saved
+            const src = imgEl && imgEl.src ? imgEl.src : '';
+            if (src.startsWith('/designs/')) {
+                const fd = new FormData();
+                fd.append('which', side);
+                fd.append('use_saved', '1');
+                const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
+                    method: 'POST', body: fd
+                });
+                const j = await r.json();
+                if (!r.ok) throw new Error(j.error || 'Upload failed');
+                return j.src || null;
+            }
+            // If it is already a Printify URL (http/https) AND not the default logo, use it as-is
+            if (/^https?:\/\//.test(src) && !src.includes('68faffc792143382282f3002')) {
+                return src;
+            }
+            // No usable source
+            return null;
+        }
+
+        // Respect single-design mode: only consider light panel
+        const single = (localStorage.getItem(`kd:singleDesign:${pid}`) === '1');
+
+        const lightSrc = await ensureUploaded('light', document.getElementById('lightPreview'), document.getElementById('lightFile'));
+        const darkSrc = single ? null : await ensureUploaded('dark', document.getElementById('darkPreview'), document.getElementById('darkFile'));
+
+        const images = [lightSrc, darkSrc].filter(Boolean);
+        console.log(`[AI] Images ready for GPT: ${images.length}`, images);
+        out.textContent = 'Generating copy…';
+
+        const colors = (() => {
+            const d = loadSaved(PRODUCT_ID);
+            return (d.light || []).concat(single ? [] : (d.dark || []));
+        })();
+        const title_hint = document.querySelector('input[name="title"]').value;
+
+        try {
+            const res = await fetch('/api/printify/ai/generate_metadata', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({product_id: pid, images, title_hint, colors})
+            });
+            const data = await res.json();
+            console.log('[AI] Backend images attached:', data._debug_images_attached);
+            if (!res.ok) throw new Error(data.error || 'Failed');
+
+            out.innerHTML = `
+      <h4>Generated Title</h4><p>${data.title}</p>
+      <h4>Description</h4>
+      <div style="background:#f8f8f8;padding:.5rem;border-radius:6px;">${data.description_html}</div>
+      <h4>Tags</h4><p>${(data.tags || []).join(', ')}</p>
+    `;
+            // Autofill fields for convenience
+            try {
+                if (data.title) document.querySelector('input[name="title"]').value = data.title;
+                if (data.description_html) document.querySelector('textarea[name="description"]').value = data.description_html;
+            } catch {
+            }
+        } catch (e) {
+            out.textContent = e.message;
+        }
+    });
+const saveBtn = document.getElementById('saveBtn');
+if (saveBtn) {
+  saveBtn.addEventListener('click', save);
 }
+
 
 </script>
 </body>

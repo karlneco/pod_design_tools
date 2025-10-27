@@ -19,6 +19,7 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     ALLOWED_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
+    DEFAULT_FRONT_IMAGE_ID = "68faffc792143382282f3002"
 
 class DevConfig(Config):
     DEBUG = True

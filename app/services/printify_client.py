@@ -1,4 +1,8 @@
+import base64
+import json
 import os
+from pathlib import Path
+
 import httpx
 from dotenv import load_dotenv
 
@@ -79,51 +83,56 @@ class PrintifyClient:
             # No src => skip this image entry entirely
             return None
 
-        def _slim_placeholders(placeholders: list[dict]) -> list[dict]:
+        def _slim_placeholders(placeholders: list[dict], *, position: str) -> list[dict]:
             """
-            Keep only placeholders that actually have at least one usable image.
-            An image is “usable” if it already has a valid media id OR we can upload by URL.
+            - For NON-FRONT positions: keep placeholders if they have at least one image with a usable id;
+              do NOT try to remove/optimize them — preserve angle/scale/x/y (coerced).
+            - For FRONT: we'll still pass through, but later in SAVE we will overwrite front placements anyway.
             """
             out = []
             for ph in (placeholders or []):
+                imgs_in = ph.get("images") or []
                 imgs = []
-                for img in (ph.get("images") or []):
+                for img in imgs_in:
                     iid = _image_id_from_template(img)
                     if iid:
                         imgs.append({
                             "id": iid,
-                            "x": _to_float(img.get("x", 0)),
-                            "y": _to_float(img.get("y", 0)),
-                            "scale": _to_float(img.get("scale", 1)),
-                            "angle": _to_int(img.get("angle", 0)),  # MUST be integer per validator
+                            "x": _to_float(img.get("x", 0.5)),
+                            "y": _to_float(img.get("y", 0.5)),
+                            "scale": _to_float(img.get("scale", 1.0)),
+                            "angle": _to_int(img.get("angle", 0)),
                         })
-                # Only keep this placeholder if it has at least one image
-                if imgs:
-                    entry={}
-                    if isinstance(ph.get("decoration_method"), str):
-                        entry["decoration_method"] = ph["decoration_method"]
-                    entry["position"] = ph["position"]
-                    entry["images"] = imgs
-                    out.append(entry)
+                if not imgs:
+                    # skip completely empty placeholders (Printify validator dislikes empty image lists)
+                    continue
+                entry = {"position": ph.get("position") or position, "images": imgs}
+                # keep decoration_method if present
+                if isinstance(ph.get("decoration_method"), str):
+                    entry["decoration_method"] = ph["decoration_method"]
+                out.append(entry)
             return out
 
         def _slim_print_areas(print_areas: list[dict]) -> list[dict]:
             """
-            Build slimmed print_areas (skip ones that end up empty), THEN
-            guarantee there is at least one 'front' placeholder by injecting
-            our store logo image if needed.
+            Preserve ALL positions from the template, especially non-front (neck/label/back/sleeves), with their images.
             """
             slim = []
-            has_front = False
-
             for pa in (print_areas or []):
-                placeholders = _slim_placeholders(pa.get("placeholders", []))
-                # Track if any placeholder is 'front'
-                if any((ph.get("position") == "front") for ph in placeholders):
-                    has_front = True
+                pos_list = [ (ph.get("position") or "").lower() for ph in (pa.get("placeholders") or []) ]
+                # If the area has no placeholders, skip it.
+                if not pa.get("placeholders"):
+                    continue
+
+                placeholders = []
+                # Build placeholders per original position
+                for ph in (pa.get("placeholders") or []):
+                    position = ph.get("position") or "front"
+                    ph_list = _slim_placeholders([ph], position=position)
+                    placeholders.extend(ph_list)
 
                 if not placeholders:
-                    continue  # keep behavior: drop completely empty areas
+                    continue
 
                 entry = {
                     "variant_ids": [int(v) for v in (pa.get("variant_ids") or [])],
@@ -133,38 +142,6 @@ class PrintifyClient:
                 if isinstance(bg, str) and HEX6.match(bg):
                     entry["background"] = bg.upper()
                 slim.append(entry)
-
-            # If no front placeholder survived, inject one at the top of the first area
-            if not has_front:
-                if not slim:
-                    # No usable areas at all — create a minimal one from the first template area shape
-                    # Try to copy variant_ids from the first input area, else union of all variant IDs, else []
-                    first_pa = (print_areas or [{}])[0]
-                    v_ids = [int(v) for v in (first_pa.get("variant_ids") or [])]
-                    if not v_ids:
-                        # best-effort: union of all
-                        seen = set()
-                        for pa in (print_areas or []):
-                            for v in (pa.get("variant_ids") or []):
-                                seen.add(int(v))
-                        v_ids = sorted(seen)
-                    slim.append({
-                        "variant_ids": v_ids,
-                        "placeholders": []
-                    })
-                # Inject the front placeholder with your known logo image
-                slim[0]["placeholders"].insert(0, {
-                    "position": "front",
-                    "images": [{
-                        "id": FRONT_LOGO["id"],
-                        "x": float(FRONT_LOGO["x"]),
-                        "y": float(FRONT_LOGO["y"]),
-                        "scale": float(FRONT_LOGO["scale"]),
-                        "angle": _to_int(FRONT_LOGO["angle"])
-                    }]
-                })
-                has_front = True
-
             return slim
 
         payload = {
@@ -254,6 +231,77 @@ class PrintifyClient:
             r.raise_for_status()
             return r.json()
 
+    import json
+    from pathlib import Path
+    import httpx
+
+    def update_product(self, product_id: str, product_spec: dict) -> dict:
+        """
+        PUT an update to a Printify product.
+        Logs headers + JSON payload before sending.
+        """
+        url = f"{PRINTIFY_API_BASE}/shops/{self.shop_id}/products/{product_id}.json"
+        headers = self.headers.copy()
+        headers["Content-Type"] = "application/json"
+
+        # --- Debug log start ---
+        debug_dir = Path("data")
+        debug_dir.mkdir(exist_ok=True)
+        debug_path = debug_dir / "printify_last_request.json"
+
+        debug_data = {
+            "method": "PUT",
+            "url": url,
+            "headers": headers,
+            "json": product_spec,
+        }
+
+        with debug_path.open("w", encoding="utf-8") as f:
+            json.dump(debug_data, f, indent=2, ensure_ascii=False)
+
+        print("\n" + "=" * 80)
+        print("PRINTIFY UPDATE REQUEST:")
+        print(json.dumps(debug_data, indent=2, ensure_ascii=False))
+        print("=" * 80 + "\n")
+        # --- Debug log end ---
+
+        with httpx.Client(timeout=120) as client:
+            r = client.put(url, headers=headers, json=product_spec)
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                # print the full response body for debugging
+                print("\n--- PRINTIFY RESPONSE BODY ---")
+                print(r.text)
+                print("------------------------------\n")
+                raise httpx.HTTPStatusError(
+                    f"{e} — body: {r.text}",
+                    request=e.request,
+                    response=e.response,
+                )
+            return r.json()
+
+    def ensure_front_with_image(self, product_json: dict, *, image_id: str, x=0.5, y=0.5, scale=1.0, angle=0) -> dict:
+        """
+        Returns a minimal product payload that sets a FRONT placeholder with the provided image.
+        Uses all enabled variants on the product for the front print_area.
+        """
+        variants = product_json.get("variants") or []
+        enabled_variant_ids = [int(v["id"]) for v in variants if v.get("is_enabled", True)]
+        # Build a single front print area
+        front_area = {
+            "variant_ids": enabled_variant_ids,
+            "placeholders": [{
+                "position": "front",
+                "images": [{
+                    "id": image_id,
+                    "x": float(x), "y": float(y),
+                    "scale": float(scale), "angle": int(angle)
+                }]
+            }]
+        }
+        return {"print_areas": [front_area]}
+
     def publish_to_shopify(self, product_id: str, publish_details: dict | None = None):
         """Publish a Printify product to connected Shopify store.
         publish_details may include: {"title": True, "description": True, "images": True, "variants": True}
@@ -265,7 +313,6 @@ class PrintifyClient:
                                                      "variants": True})
             r.raise_for_status()
             return r.json()
-
 
     def upload_image_by_url(self, *, url: str, file_name: str = "art.png") -> dict:
         """Upload an image into the Printify media library by URL; returns the upload JSON incl. 'id'."""
@@ -303,3 +350,32 @@ class PrintifyClient:
             except httpx.HTTPStatusError as e:
                 raise httpx.HTTPStatusError(f"{e} — body: {r.text}", request=e.request, response=e.response)
             return r.json()
+
+    def upload_image_file(self, *, file_path: str, file_name: str | None = None) -> dict:
+        """
+        Upload a local image to the Printify media library using JSON payload.
+        The v1 API expects either {"url": "..."} OR {"file_name": "...", "contents": "<base64>"}.
+        Returns JSON including uploaded image 'id'.
+        """
+        endpoint = f"{PRINTIFY_API_BASE}/uploads/images.json"
+        fp = Path(file_path)
+        if not fp.exists():
+            raise FileNotFoundError(file_path)
+
+        name = file_name or fp.name
+        contents_b64 = base64.b64encode(fp.read_bytes()).decode("utf-8")
+        payload = {
+            "file_name": name,
+            "contents": contents_b64
+        }
+
+        with httpx.Client(timeout=180) as client:
+            # IMPORTANT: JSON, not multipart; must include Content-Type header
+            r = client.post(endpoint, headers=self.headers, json=payload)
+            try:
+                r.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                # surface server body for quicker debugging
+                raise httpx.HTTPStatusError(f"{e} — body: {r.text}", request=e.request, response=e.response)
+            return r.json()
+

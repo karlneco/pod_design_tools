@@ -30,7 +30,7 @@ def printify_edit(product_id):
     # Log raw JSON for debugging
     try:
         import json as _json
-        app.logger.info("Printify product %s:\n%s", product_id, _json.dumps(full, indent=2, ensure_ascii=False))
+        logger.info("Printify product %s:\n%s", product_id, _json.dumps(full, indent=2, ensure_ascii=False))
     except Exception:
         pass
 
