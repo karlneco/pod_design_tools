@@ -865,7 +865,7 @@ def api_printify_save(product_id):
             vv["price"] = 0
 
         # enable if referenced by any print_areas; otherwise keep as-is
-        vv["is_enabled"] = True if vv["id"] in must_enable else bool(v.get("is_enabled", False))
+        vv["is_enabled"] = True if vv["id"] in must_enable else False
 
         # trim to allowed keys to avoid noisy payloads
         vv = {k: vv[k] for k in _allowed_variant_keys if k in vv}
