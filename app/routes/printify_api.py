@@ -72,10 +72,6 @@ def api_list_printify_products():
     return jsonify(store.list(PRINTIFY_PRODUCTS_COLLECTION))
 
 
-def _to_bool(param):
-    pass
-
-
 @bp.post("/printify/products/cache/update")
 def update_printify_products_cache():
     """Download Printify products, normalize, and store cache."""
@@ -316,7 +312,7 @@ def apply_design(product_id):
     # Upload to Printify
     if upload_file is not None:
         # Save temp
-        tmp = Path("data/tmp");
+        tmp = Path("data/tmp")
         tmp.mkdir(parents=True, exist_ok=True)
         tmp_path = tmp / upload_file.filename
         upload_file.save(tmp_path)
@@ -586,7 +582,6 @@ def api_printify_save(product_id):
         Logs path, size, and response for debugging.
         """
 
-
         if not path:
             return None
         try:
@@ -678,11 +673,11 @@ def api_printify_save(product_id):
             if not t: continue
             out.extend(all_variants_by_color.get(t, []))
         # de-dup preserve order
-        seen = set();
+        seen = set()
         uniq = []
         for x in out:
             if x in seen: continue
-            seen.add(x);
+            seen.add(x)
             uniq.append(x)
         return uniq
 
@@ -693,7 +688,6 @@ def api_printify_save(product_id):
     if not single_mode:
         for c in saved_other:
             enabled_other_vids.append(variant_ids_for([c]))
-
 
     # Fallbacks if user hasn't picked any colors yet:
     if single_mode:
@@ -855,7 +849,7 @@ def api_printify_save(product_id):
     # (Printify ignores unknown fields, but these are commonly present/accepted.)
     _allowed_variant_keys = {
         "id", "price", "is_enabled", "sku", "options", "is_default", "title", "grams"
-        }
+    }
 
     must_enable = all_selected_variant_ids
     variants_patch = []
