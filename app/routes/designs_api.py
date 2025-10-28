@@ -1,6 +1,8 @@
+import json
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory
+from werkzeug.utils import secure_filename
 
 from .. import Config
 from ..extensions import store, printify_client
@@ -54,29 +56,52 @@ def upload_designs():
     Multipart form-data:
       - product_id (text)
       - light (file) optional
-      - dark (file) optional
-    Saves to data/designs/<product_id>/{light|dark}<ext>
+      - dark  (file) optional
+    Saves to data/designs/<product_id>/orig/<original_filename>
+    Writes data/designs/<product_id>/manifest.json mapping roles -> file path.
     """
     product_id = request.form.get("product_id")
     if not product_id:
         return jsonify({"error": "product_id is required"}), 400
 
-    dest = Path("data/designs") / str(product_id)
-    dest.mkdir(parents=True, exist_ok=True)
+    base = Path("data/designs") / str(product_id)
+    base.mkdir(parents=True, exist_ok=True)
+
+    manifest_path = base / "manifest.json"
+    manifest = {}
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            manifest = {}
 
     saved = {}
-    for key in ("light", "dark"):
-        file = request.files.get(key)
-        if not file or not file.filename:
-            continue
-        ext = Path(file.filename).suffix.lower()
-        if ext not in Config.ALLOWED_EXTS:
-            return jsonify({"error": f"{key} must be one of {Config.ALLOWED_EXTS}"}), 400
-        out = dest / f"{key}{ext}"
-        file.save(out)
-        saved[key] = str(out)
+    ALLOWED = {".png", ".jpg", ".jpeg", ".webp"}
 
-    return jsonify({"ok": True, "saved": saved})
+    for role in ("light", "dark"):
+        f = request.files.get(role)
+        if not f or not f.filename:
+            continue
+        # sanitize and save under original filename
+        secure_name = secure_filename(f.filename)
+        ext = Path(secure_name).suffix.lower()
+        if ext not in ALLOWED:
+            return jsonify({"error": f"{role} must be one of {sorted(ALLOWED)}"}), 400
+
+        out = base / secure_name
+        f.save(out)
+
+        # update manifest
+        manifest[role] = {
+            "file": secure_name                 # e.g. "MyCoolArt.png"
+        }
+        saved[role] = str(out)
+
+    # persist manifest if changed
+    if saved:
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    return jsonify({"ok": True, "saved": saved, "manifest": manifest})
 
 
 @bp.get("/designs/<slug>")
@@ -204,3 +229,28 @@ def printify_publish(slug):
     design["status"]["published_shopify"] = True
     store.upsert("designs", slug, design)
     return jsonify(result)
+
+
+@bp.get("/designs/<product_id>/<which>")
+def serve_design_file(product_id, which):
+    base = Path("data/designs") / str(product_id)
+    if which not in ("light", "dark"):
+        return "Not found", 404
+
+    manifest_path = base / "manifest.json"
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            entry = manifest.get(which)
+            if entry and entry.get("file"):
+                target = base / entry["file"]
+                if target.exists() and target.is_file():
+                    return send_from_directory(target.parent, target.name)
+        except Exception:
+            pass
+
+    # fallback: legacy light.* / dark.* layout
+    for p in base.glob(f"{which}.*"):
+        if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
+            return send_from_directory(p.parent, p.name)
+    return "Not found", 404

@@ -527,36 +527,66 @@ def api_printify_save(product_id):
         except Exception as e:
             log.warning("[SAVE] Could not list %s: %s", str(p), e)
 
-    def find_local(pid: str, which: str) -> Path | None:
+    def find_local(pid: str, which: str) -> tuple[Path, str] | None:
+
         """
         Search multiple locations for 'light.*' or 'dark.*'.
         Case-insensitive extension match; only allow image types.
         """
-        for base_dir in _candidate_design_dirs(pid):
-            _debug_list_dir(base_dir)
-            if not base_dir.exists():
-                continue
-            # try exact pattern first
-            for p in base_dir.glob(f"{which}.*"):
-                if p.suffix.lower() in ALLOWED_EXTS:
-                    log.info("[SAVE] Found %s file at %s", which, str(p))
-                    return p
-            # case-insensitive scan fallback
-            for p in base_dir.iterdir():
-                if not p.is_file():
-                    continue
-                name = p.name.lower()
-                if name.startswith(which.lower() + ".") and Path(name).suffix.lower() in ALLOWED_EXTS:
-                    log.info("[SAVE] Found (case-insensitive) %s file at %s", which, str(p))
-                    return p
-        log.info("[SAVE] No local %s file found for product %s", which, pid)
+        hit = _resolve_from_manifest(pid, which)
+        if hit:
+            return hit
         return None
+
+    def _design_root(pid: str) -> list[Path]:
+        root = Path(current_app.root_path).resolve()
+        proj_root = root.parent
+        return [
+            proj_root / "data" / "designs" / pid,  # <project>/data/designs/<pid>
+            root / "data" / "designs" / pid,  # <project>/app/data/designs/<pid>
+            Path("data/designs") / pid,  # CWD fallback
+        ]
+
+    def _load_manifest(base: Path) -> dict | None:
+        mf = base / "manifest.json"
+        if not mf.exists():
+            return None
+        try:
+            return json.loads(mf.read_text(encoding="utf-8"))
+        except Exception as e:
+            current_app.logger.warning("[SAVE] manifest.json unreadable at %s: %s", mf, e)
+            return None
+
+    def _resolve_from_manifest(pid: str, which: str) -> tuple[Path, str] | None:
+        """
+        Use manifest.json if present. Returns (absolute_path, original_file_name)
+        """
+        for base in _design_root(pid):
+            mf = _load_manifest(base)
+            if not mf:
+                continue
+            entry = (mf.get(which) or {})
+            rel_path = entry.get("path")
+            fname = entry.get("file")
+            p = (base / fname).resolve()
+            if p.exists() and p.suffix.lower() in ALLOWED_EXTS:
+                return p, (fname or p.name)
+        return None
+
+    def ensure_upload_with_original_name(pid: str, which: str, path) -> str | None:
+        if not path:
+            return None
+
+        up = printify.upload_image_file(file_path=str(path[0]), file_name=path[1])
+        return up.get("id")
 
     def ensure_upload(path: Path | None) -> str | None:
         """
         Upload a local file to Printify and return its image id.
         Logs path, size, and response for debugging.
         """
+
+
         if not path:
             return None
         try:
@@ -576,8 +606,8 @@ def api_printify_save(product_id):
     default_image_path = find_local(str(product_id), "light")
     dark_path = None if single_mode else find_local(str(product_id), "dark")
 
-    default_img_id = ensure_upload(default_image_path)
-    dark_img_id = ensure_upload(dark_path)
+    default_img_id = ensure_upload_with_original_name(str(product_id), "default", default_image_path)
+    dark_img_id = ensure_upload_with_original_name(str(product_id), "default", dark_path)
 
     # Fallbacks: if no uploaded images, try to reuse existing non-default FRONT images from product.
     DEFAULT_ID = getattr(Config, "DEFAULT_FRONT_IMAGE_ID", None)
