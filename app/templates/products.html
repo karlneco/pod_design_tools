@@ -1,145 +1,286 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shopify Products</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
-  <style>
-    .grid { display:grid; grid-template-columns: 200px 1fr; gap: 1rem; align-items: start; }
-    .card { position:relative; padding: 1rem; border: 1px solid #eee; border-radius: 10px; margin-bottom: 1rem; }
-    .status-pill { position:absolute; top:10px; right:10px; padding:0.25rem 0.6rem; border-radius:999px; font-size:0.8em; }
-    .pill-active { background:#e6ffed; color:#036d19; border:1px solid #bdf2c7; }
-    .pill-draft { background:#fff7e6; color:#8a5a00; border:1px solid #ffe0a3; }
-    .pill-archived { background:#f2f2f2; color:#666; border:1px solid #ddd; }
-    .tags { display:flex; flex-wrap: wrap; gap: 0.25rem; }
-    .tags span{
-      background:#eef;
-      padding:0.2rem 0.5rem;
-      border-radius:999px;
-      display:inline-block;
-      white-space: nowrap;        /* prevent internal line breaks */
-      overflow: hidden;           /* handle very long tags gracefully */
-      text-overflow: ellipsis;    /* ellipsis if container is too narrow */
-      word-break: keep-all;       /* avoid breaking inside words */
-      hyphens: none;
-      -webkit-hyphens: none;
-    }
-    .variants { font-size: 0.9em; color:#555; } /* (kept for future use) */
-    .color-grid { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.25rem; }
-    .color-item { width: 72px; text-align:center; }
-    .color-item img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border:1px solid #e6e6e6; }
-    .color-item .label { display:block; margin-top:.25rem; font-size:.75em; color:#444; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
-    header { display:flex; justify-content:space-between; align-items:center; }
-    .muted { color:#666; font-size:0.9em; }
-    /* Rich description rendering */
-    .desc-wrap { margin-top:.25rem; }
-    .desc-wrap > summary {
-      cursor: pointer; user-select: none; font-size: .85em; color: #444; list-style: none;
-    }
-    .desc-wrap > summary::marker { content: ""; }
-    .desc { max-height: 9rem; overflow: hidden; position: relative; }
-    .desc.fade::after {
-      content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 2.5rem;
-      background: linear-gradient(180deg, rgba(255,255,255,0), #fff);
-    }
-    /* Make arbitrary HTML play nice inside cards */
-    .desc img, .desc video, .desc iframe { max-width: 100%; height: auto; border-radius: 6px; }
-    .desc p { margin: 0 0 .5rem; }
-    .desc ul, .desc ol { margin: 0 0 .5rem 1.25rem; }
-    details[open] .desc { max-height: none; }
-    details[open] .desc.fade::after { display: none; }
-  </style>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Shopify Products</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <style>
+        .grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .card {
+            position: relative;
+            padding: 1rem;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .status-pill {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.8em;
+        }
+
+        .pill-active {
+            background: #e6ffed;
+            color: #036d19;
+            border: 1px solid #bdf2c7;
+        }
+
+        .pill-draft {
+            background: #fff7e6;
+            color: #8a5a00;
+            border: 1px solid #ffe0a3;
+        }
+
+        .pill-archived {
+            background: #f2f2f2;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+
+        .tags span {
+            background: #eef;
+            padding: 0.2rem 0.5rem;
+            border-radius: 999px;
+            display: inline-block;
+            white-space: nowrap; /* prevent internal line breaks */
+            overflow: hidden; /* handle very long tags gracefully */
+            text-overflow: ellipsis; /* ellipsis if container is too narrow */
+            word-break: keep-all; /* avoid breaking inside words */
+            hyphens: none;
+            -webkit-hyphens: none;
+        }
+
+        .variants {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        /* (kept for future use) */
+        .color-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            margin-top: .25rem;
+        }
+
+        .color-item {
+            width: 72px;
+            text-align: center;
+        }
+
+        .color-item img {
+            width: 72px;
+            height: 72px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #e6e6e6;
+        }
+
+        .color-item .label {
+            display: block;
+            margin-top: .25rem;
+            font-size: .75em;
+            color: #444;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .muted {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Rich description rendering */
+        .desc-wrap {
+            margin-top: .25rem;
+        }
+
+        .desc-wrap > summary {
+            cursor: pointer;
+            user-select: none;
+            font-size: .85em;
+            color: #444;
+            list-style: none;
+        }
+
+        .desc-wrap > summary::marker {
+            content: "";
+        }
+
+        .desc {
+            max-height: 9rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .desc.fade::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2.5rem;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff);
+        }
+
+        /* Make arbitrary HTML play nice inside cards */
+        .desc img, .desc video, .desc iframe {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+        }
+
+        .desc p {
+            margin: 0 0 .5rem;
+        }
+
+        .desc ul, .desc ol {
+            margin: 0 0 .5rem 1.25rem;
+        }
+
+        details[open] .desc {
+            max-height: none;
+        }
+
+        details[open] .desc.fade::after {
+            display: none;
+        }
+    </style>
 </head>
 
 {% macro pretty_date(iso) -%}
-  {%- if iso -%}
-    {%- set dt = iso | replace("Z","+00:00") | todatetime -%}
-    {{ dt.strftime("%B %-d, %Y - %-I:%M%p") }}
-  {%- endif -%}
+    {%- if iso -%}
+        {%- set dt = iso | replace("Z","+00:00") | todatetime -%}
+        {{ dt.strftime("%B %-d, %Y - %-I:%M%p") }}
+    {%- endif -%}
 {%- endmacro %}
 
 <body class="container">
-  <header>
+<header>
     <h1>Shopify Products</h1>
     <nav>
-      <a href="/">Dashboard</a>
-      <button id="updateBtn">Update Cache</button>
+        <a href="/">Dashboard</a>
+        <button id="updateBtn">Update Cache</button>
     </nav>
-  </header>
+</header>
 
-  {% if not products %}
+{% if not products %}
     <p>No cached products yet. Click <b>Update Cache</b> to download from Shopify.</p>
-  {% endif %}
+{% endif %}
 
-  <main>
-  {% for p in products %}
-      <article class="card">
-      {% set s = (p.status or 'unknown')|lower %}
-      <span class="status-pill {% if s=='active' %}pill-active{% elif s=='draft' %}pill-draft{% elif s=='archived' %}pill-archived{% endif %}">{{ p.status or 'unknown' }}</span>
-      <div class="grid">
-        <div>
-          {% if p.primary_image %}
-            <a href="{{ p.url }}" target="_blank"><img src="{{ p.primary_image }}" alt="{{ p.title }} image" style="max-width: 200px; height: auto; border-radius:8px;" /></a>
-          {% else %}
-            <div style="width:200px;height:200px;background:#f3f3f3;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;">No image</div>
-          {% endif %}
-        </div>
-        <div>
-          <h3><a href="{{ p.url }}" target="_blank">{{ p.title }}</a></h3>
-          {% if p.type %}<p><b>Type:</b> {{ p.type }}</p>{% endif %}
-          {% if p.description %}
-          <details class="desc-wrap">
-            <summary>Show description</summary>
-            <div class="desc fade">
-              {{ p.description | safe }}
-            </div>
-          </details>
-          {% endif %}
-          {% if p.tags %}
-            <p class="tags">{% for t in p.tags %}<span>{{ t }}</span>{% endfor %}</p>
-          {% endif %}
-            <p class="muted">
-              {% if p.created_at %}
-                Created: {{ pretty_date(p.created_at) }}
-              {% elif p.updated_at %}
-                Updated: {{ pretty_date(p.updated_at) }}
-              {% endif %}
-            </p>
-
-            {% if p.color_variants %}
-              <div>
-                <b>Colors:</b>
-                <div class="color-grid">
-                  {% for cv in p.color_variants %}
-                    <div class="color-item" title="{{ cv.color }}">
-                      {% if cv.image %}
-                        <img src="{{ cv.image }}" alt="{{ p.title }} - {{ cv.color }}">
-                      {% else %}
-                        <div style="width:72px;height:72px;background:#f3f3f3;border-radius:8px;border:1px solid #e6e6e6;"></div>
-                      {% endif %}
-                      <span class="label">{{ cv.color }}</span>
-                    </div>
-                  {% endfor %}
+<main>
+    {% for p in products %}
+        <article class="card">
+            {% set s = (p.status or 'unknown')|lower %}
+            <span class="status-pill {% if s=='active' %}pill-active{% elif s=='draft' %}pill-draft{% elif s=='archived' %}pill-archived{% endif %}">{{ p.status or 'unknown' }}</span>
+            <div class="grid">
+                <div>
+                    {% if p.primary_image %}
+                        <a href="{{ p.url }}" target="_blank">
+                            <img src="{{ p.primary_image }}" alt="{{ p.title }} image"
+                                 style="max-width: 200px; height: auto; border-radius:8px;"/>
+                        </a>
+                        {% if p.url %}
+                            <div style="margin-top:.4rem;">
+                                <a href="{{ p.url }}" target="_blank" class="secondary">View in store →</a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div style="width:200px;height:200px;background:#f3f3f3;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#aaa;">
+                            No image
+                        </div>
+                        {% if p.url %}
+                            <div style="margin-top:.4rem;">
+                                <a href="{{ p.url }}" target="_blank" class="secondary">View in store →</a>
+                            </div>
+                        {% endif %}
+                    {% endif %}
                 </div>
-              </div>
-            {% endif %}
-        </div>
-      </div>
-    </article>
-  {% endfor %}
-  </main>
+                <div>
+                    <h3>
+                        <h3><a href="/shopify/products/{{ p.id }}/edit">{{ p.title }}</a></h3>
+                            {{ p.title }}
+                        </a>
+                    </h3>
+                    {% if p.type %}<p><b>Type:</b> {{ p.type }}</p>{% endif %}
+                    {% if p.description %}
+                        <details class="desc-wrap">
+                            <summary>Show description</summary>
+                            <div class="desc fade">
+                                {{ p.description | safe }}
+                            </div>
+                        </details>
+                    {% endif %}
+                    {% if p.tags %}
+                        <p class="tags">{% for t in p.tags %}<span>{{ t }}</span>{% endfor %}</p>
+                    {% endif %}
+                    <p class="muted">
+                        {% if p.created_at %}
+                            Created: {{ pretty_date(p.created_at) }}
+                        {% elif p.updated_at %}
+                            Updated: {{ pretty_date(p.updated_at) }}
+                        {% endif %}
+                    </p>
+
+                    {% if p.color_variants %}
+                        <div>
+                            <b>Colors:</b>
+                            <div class="color-grid">
+                                {% for cv in p.color_variants %}
+                                    <div class="color-item" title="{{ cv.color }}">
+                                        {% if cv.image %}
+                                            <img src="{{ cv.image }}" alt="{{ p.title }} - {{ cv.color }}">
+                                        {% else %}
+                                            <div style="width:72px;height:72px;background:#f3f3f3;border-radius:8px;border:1px solid #e6e6e6;"></div>
+                                        {% endif %}
+                                        <span class="label">{{ cv.color }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+    {% endfor %}
+</main>
 
 <script>
-  document.getElementById('updateBtn').addEventListener('click', async ()=>{
-    const btn = document.getElementById('updateBtn');
-    btn.setAttribute('aria-busy','true');
-    try{
-      const res = await fetch('/api/products/cache/update', {method:'POST'});
-      await res.json();
-      location.reload();
-    }catch(e){ alert('Failed to update cache'); }
-  });
+    document.getElementById('updateBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('updateBtn');
+        btn.setAttribute('aria-busy', 'true');
+        try {
+            const res = await fetch('/api/products/cache/update', {method: 'POST'});
+            await res.json();
+            location.reload();
+        } catch (e) {
+            alert('Failed to update cache');
+        }
+    });
 </script>
 </body>
 </html>

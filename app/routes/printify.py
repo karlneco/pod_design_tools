@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify
 
 from ..extensions import store, printify_client as printify
 
@@ -344,3 +344,5 @@ def printify_new():
     # Sort alphabetically
     templates = sorted(templates, key=lambda x: (x.get("title") or "").lower())
     return render_template("printify_new.html", templates=templates)
+
+

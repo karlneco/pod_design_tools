@@ -28,7 +28,7 @@ def create_app(config_class: type[Config] = Config):
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(api, url_prefix="/api")
-    app.register_blueprint(shopify_pages)
+    app.register_blueprint(shopify_pages, url_prefix="/shopify")
     app.register_blueprint(shopify_api, url_prefix="/api")
     app.register_blueprint(printify_pages)
     app.register_blueprint(printify_api, url_prefix="/api")

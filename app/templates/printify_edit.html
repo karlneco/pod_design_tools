@@ -135,6 +135,10 @@
             Description
             <textarea name="description" rows="6">{{ p.description }}</textarea>
         </label>
+        <label>
+            Tags (comma-separated)
+          <input name="tags" placeholder="japan, tokyo, travel, ..."/>
+        </label>
         <section style="margin-top:.5rem;">
             <h3 style="margin:0 0 .5rem 0;">Template colors</h3>
             <div>
@@ -248,16 +252,25 @@
             </div>
             <div id="recs" style="margin-top:.5rem;"></div>
         </fieldset>
+
         <fieldset style="margin-top:1rem;">
             <legend>AI Product Info</legend>
             <button type="button" id="generateInfoBtn">Generate Product Info (AI)</button>
             <div id="aiInfoResult" style="margin-top:.5rem;"></div>
         </fieldset>
 
-        <div style="margin-top:1rem;">
-            <button type="button" id="saveBtn">Save</button>
-            <small id="saveStatus" class="muted" style="margin-left:.5rem;"></small>
-        </div>
+    <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <button type="button" id="saveBtn">Save</button>
+        <small id="saveStatus" class="muted" style="margin-left:.5rem;"></small>
+      </div>
+
+      <!-- Right-aligned actions -->
+      <div style="display:flex; gap:.5rem; align-items:center;">
+        <button type="button" id="refreshFromPrintifyBtn" class="secondary">Update from Printify</button>
+        <button type="button" id="openInShopifyBtn" class="contrast outline">Open in Shopify</button>
+      </div>
+    </div>
     </form>
 
     <details style="margin-top:1rem;">
@@ -306,6 +319,11 @@
         const saveStatus = document.getElementById('saveStatus');
         const title = document.querySelector('input[name="title"]').value || '';
         const description = document.querySelector('textarea[name="description"]').value || '';
+        const tagsRaw = (document.querySelector('input[name="tags"]')?.value || '');
+        const tags = tagsRaw
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
 
         // Pull the current saved color selections from localStorage
         const saved = loadSaved(pid); // { light: [...], dark: [...] }
@@ -337,6 +355,7 @@
             const body = {
                 title,
                 description,
+                tags,
                 single_mode: isSingleMode(),
                 saved_light: Array.isArray(saved.light) ? saved.light : [],
                 saved_dark: isSingleMode() ? [] : (Array.isArray(saved.dark) ? saved.dark : [])
@@ -806,92 +825,218 @@
         });
     }
 
-    document.getElementById('generateInfoBtn').addEventListener('click', async () => {
-        const out = document.getElementById('aiInfoResult');
-        out.textContent = 'Preparing images…';
-        const pid = PRODUCT_ID;
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', save);
+    }
 
-        // Helper: upload & place this side if needed; returns usable URL (Printify src) or null
-        async function ensureUploaded(side, imgEl, fileInput) {
-            // If user selected a new file right now, send that to the server
-            if (fileInput && fileInput.files && fileInput.files[0]) {
-                const fd = new FormData();
-                fd.append('which', side);
-                fd.append('file', fileInput.files[0]);
-                const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
-                    method: 'POST', body: fd
-                });
-                const j = await r.json();
-                if (!r.ok) throw new Error(j.error || 'Upload failed');
-                return j.src || null;
-            }
-            // If we already saved a file earlier (/designs/<id>/<side>.*), ask server to use_saved
-            const src = imgEl && imgEl.src ? imgEl.src : '';
-            if (src.startsWith('/designs/')) {
-                const fd = new FormData();
-                fd.append('which', side);
-                fd.append('use_saved', '1');
-                const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
-                    method: 'POST', body: fd
-                });
-                const j = await r.json();
-                if (!r.ok) throw new Error(j.error || 'Upload failed');
-                return j.src || null;
-            }
-            // If it is already a Printify URL (http/https) AND not the default logo, use it as-is
-            if (/^https?:\/\//.test(src) && !src.includes('68faffc792143382282f3002')) {
-                return src;
-            }
-            // No usable source
-            return null;
-        }
+// --- Shared helper: ensure current preview is in Printify and return a usable URL (src) ---
+async function ensureUploaded(side, imgEl, fileInput) {
+  const pid = PRODUCT_ID;
 
-        // Respect single-design mode: only consider light panel
-        const single = (localStorage.getItem(`kd:singleDesign:${pid}`) === '1');
-
-        const lightSrc = await ensureUploaded('light', document.getElementById('lightPreview'), document.getElementById('lightFile'));
-        const darkSrc = single ? null : await ensureUploaded('dark', document.getElementById('darkPreview'), document.getElementById('darkFile'));
-
-        const images = [lightSrc, darkSrc].filter(Boolean);
-        console.log(`[AI] Images ready for GPT: ${images.length}`, images);
-        out.textContent = 'Generating copy…';
-
-        const colors = (() => {
-            const d = loadSaved(PRODUCT_ID);
-            return (d.light || []).concat(single ? [] : (d.dark || []));
-        })();
-        const title_hint = document.querySelector('input[name="title"]').value;
-
-        try {
-            const res = await fetch('/api/printify/ai/generate_metadata', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({product_id: pid, images, title_hint, colors})
-            });
-            const data = await res.json();
-            console.log('[AI] Backend images attached:', data._debug_images_attached);
-            if (!res.ok) throw new Error(data.error || 'Failed');
-
-            out.innerHTML = `
-      <h4>Generated Title</h4><p>${data.title}</p>
-      <h4>Description</h4>
-      <div style="background:#f8f8f8;padding:.5rem;border-radius:6px;">${data.description_html}</div>
-      <h4>Tags</h4><p>${(data.tags || []).join(', ')}</p>
-    `;
-            // Autofill fields for convenience
-            try {
-                if (data.title) document.querySelector('input[name="title"]').value = data.title;
-                if (data.description_html) document.querySelector('textarea[name="description"]').value = data.description_html;
-            } catch {
-            }
-        } catch (e) {
-            out.textContent = e.message;
-        }
+  // If user picked a file now -> upload & place
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    const fd = new FormData();
+    fd.append('which', side);
+    fd.append('file', fileInput.files[0]);
+    const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
+      method: 'POST', body: fd
     });
-const saveBtn = document.getElementById('saveBtn');
-if (saveBtn) {
-  saveBtn.addEventListener('click', save);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Upload failed');
+    return j.src || null;
+  }
+
+  // If a saved local path (/designs/<id>/<which>.*) is shown -> request use_saved
+  const src = imgEl && imgEl.src ? imgEl.src : '';
+  if (src.startsWith('/designs/')) {
+    const fd = new FormData();
+    fd.append('which', side);
+    fd.append('use_saved', '1');
+    const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
+      method: 'POST', body: fd
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Upload failed');
+    return j.src || null;
+  }
+
+  // If already a Printify URL and not the default logo -> just use it
+  if (/^https?:\/\//.test(src) && !src.includes('68faffc792143382282f3002')) {
+    return src;
+  }
+
+  // No usable source
+  return null;
 }
+
+// Collect colors for context (same logic you used)
+function gatherSelectedColorsForAI(singleMode) {
+  const d = loadSaved(PRODUCT_ID);
+  return (d.light || []).concat(singleMode ? [] : (d.dark || []));
+}
+
+async function runGenerate(overridePrompt = null) {
+  const out = document.getElementById('aiInfoResult');
+  const pid = PRODUCT_ID;
+  const single = (localStorage.getItem(`kd:singleDesign:${pid}`) === '1');
+
+  out.textContent = 'Preparing images…';
+
+  const lightSrc = await ensureUploaded('light',
+    document.getElementById('lightPreview'),
+    document.getElementById('lightFile')
+  );
+  const darkSrc = single ? null : await ensureUploaded('dark',
+    document.getElementById('darkPreview'),
+    document.getElementById('darkFile')
+  );
+
+  const images = [lightSrc, darkSrc].filter(Boolean);
+  const colors = gatherSelectedColorsForAI(single);
+  const usedPrompt = (overridePrompt != null)
+    ? String(overridePrompt || '')
+    : (document.querySelector('input[name="title"]').value || '');
+
+  out.textContent = 'Generating copy…';
+
+  const res = await fetch('/api/printify/ai/generate_metadata', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      product_id: pid,
+      images,
+      title_hint: usedPrompt,
+      colors
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to generate');
+
+  // Render result + refine UI in aiInfoResult
+  const tagsText = (data.tags || []).join(', ');
+  const imgsCount = (typeof data._debug_images_attached === 'number')
+    ? data._debug_images_attached : images.length;
+
+  document.getElementById('aiInfoResult').innerHTML = `
+    <h4>Generated Title</h4>
+    <p id="aiOutTitleText">${data.title || ''}</p>
+
+    <h4>Description</h4>
+    <div id="aiOutDescHtml" style="background:#f8f8f8;padding:.5rem;border-radius:6px;">${data.description_html || ''}</div>
+
+    <h4>Tags</h4>
+    <p id="aiOutTagsText">${tagsText}</p>
+
+    <details id="aiRefineBox" style="margin-top:.5rem;" open>
+      <summary>Refine prompt & try again</summary>
+      <small class="muted">Edit the instruction we send to the model. It’s used as the “title_hint”.</small>
+      <textarea id="aiPromptBox" rows="4" style="margin-top:.35rem;" spellcheck="false"></textarea>
+      <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+        <button type="button" id="aiRetryBtn">Try again with these instructions</button>
+        <small id="aiRetryStatus" class="muted"></small>
+        <small id="aiDebugCount" class="muted" style="margin-left:auto;">Images sent: ${imgsCount}</small>
+      </div>
+    </details>
+  `;
+
+  // Autofill your form fields too (so they’re ready to save)
+  try {
+    if (data.title) document.querySelector('input[name="title"]').value = data.title;
+    if (data.description_html) document.querySelector('textarea[name="description"]').value = data.description_html;
+    if (Array.isArray(data.tags)) {
+        const tagsInput = document.querySelector('input[name="tags"]');
+        if (tagsInput) tagsInput.value = data.tags.join(', ');
+    }
+  } catch {}
+
+  // Seed the refine box with the prompt we actually used
+  const promptBox = document.getElementById('aiPromptBox');
+  if (promptBox) promptBox.value = usedPrompt;
+
+  // Wire "Try again" -> re-run with edited prompt
+  const retryBtn = document.getElementById('aiRetryBtn');
+  const retryStatus = document.getElementById('aiRetryStatus');
+  if (retryBtn) {
+    retryBtn.onclick = async () => {
+      retryStatus.textContent = 'Retrying…';
+      try {
+        const nextPrompt = (document.getElementById('aiPromptBox').value || '').trim();
+        await runGenerate(nextPrompt);
+        retryStatus.textContent = 'Updated.';
+        setTimeout(()=> retryStatus.textContent = '', 1200);
+      } catch(e) {
+        retryStatus.textContent = String(e.message || e);
+      }
+    };
+  }
+}
+
+// Initial “Generate Product Info (AI)” button
+document.getElementById('generateInfoBtn').addEventListener('click', async () => {
+  const out = document.getElementById('aiInfoResult');
+  try {
+    await runGenerate(null);
+  } catch(e) {
+    out.textContent = String(e.message || e);
+  }
+});
+
+
+    const refreshBtn = document.getElementById('refreshFromPrintifyBtn');
+const shopifyBtn = document.getElementById('openInShopifyBtn');
+const rawEl = document.getElementById('rawJson');
+
+if (refreshBtn) {
+  refreshBtn.addEventListener('click', async () => {
+    const pid = PRODUCT_ID;
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Updating…';
+    try {
+      const res = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/refresh`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        const extra = data?.detail?.msg || data?.error || 'Refresh failed';
+        throw new Error(extra);
+      }
+
+      if (data.product?.title) {
+        const t = document.querySelector('input[name="title"]'); if (t) t.value = data.product.title;
+      }
+      if (typeof data.product?.description === 'string') {
+        const d = document.querySelector('textarea[name="description"]'); if (d) d.value = data.product.description;
+      }
+      const rawEl = document.getElementById('rawJson');
+      if (rawEl && data.product) rawEl.textContent = JSON.stringify(data.product, null, 2);
+
+      const shopUrl = data.normalized?.shopify_url || '';
+      const shopifyBtn = document.getElementById('openInShopifyBtn');
+      if (shopifyBtn) shopifyBtn.dataset.shopifyUrl = shopUrl || '';
+
+      alert('Product refreshed from Printify and local cache updated.');
+    } catch (e) {
+      alert(`Refresh error: ${e.message || e}`);
+    } finally {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Update from Printify';
+    }
+  });
+}
+
+if (shopifyBtn) {
+  shopifyBtn.addEventListener('click', async () => {
+    // Prefer whatever we learned during refresh:
+    const known = shopifyBtn.dataset.shopifyUrl;
+    if (known) {
+      window.open(known, '_blank');
+      return;
+    }
+    // Fallback: jump to a placeholder page in your app for now
+    const pid = PRODUCT_ID;
+    window.open(`/shopify/products/placeholder/${encodeURIComponent(pid)}`, '_blank');
+  });
+}
+
 
 
 </script>

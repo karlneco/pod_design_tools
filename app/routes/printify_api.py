@@ -489,6 +489,26 @@ def api_printify_save(product_id):
     saved_default = body.get("saved_light") or []
     saved_other = body.get("saved_dark") or []
 
+    raw_tags = body.get("tags", [])
+    if isinstance(raw_tags, str):
+        raw_tags = [raw_tags]
+    if isinstance(raw_tags, list):
+        tags = []
+        seen = set()
+        for t in raw_tags:
+            s = str(t).strip()
+            if not s:
+                continue
+            key = s.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            tags.append(s)
+        # (Optional) cap to a reasonable number if you like:
+        tags = tags[:40]
+    else:
+        tags = []
+
     try:
         prod = printify.get_product(product_id)
     except Exception as e:
@@ -873,6 +893,8 @@ def api_printify_save(product_id):
 
     # include in the outgoing patch
     patch = {"title": title, "description": description}
+    if tags:  # only include if provided to avoid overwriting unintentionally
+        patch["tags"] = tags
     if include_print_areas:
         patch["print_areas"] = merged_areas
     patch["variants"] = variants_patch
@@ -912,3 +934,98 @@ def api_printify_save(product_id):
             "print_areas_count": len(patch.get("print_areas", []))
         }
     })
+
+@bp.post("/printify/products/<product_id>/refresh")
+def api_printify_refresh(product_id):
+    import traceback, re
+
+    def _json_error(msg, *, status=400, detail=None):
+        payload = {"error": msg}
+        if detail:
+            payload["detail"] = detail
+        return jsonify(payload), status
+
+    try:
+        prod = printify.get_product(product_id)
+    except Exception as e:
+        return _json_error("Failed to load product from Printify",
+                           detail={"type": type(e).__name__, "msg": str(e), "trace": traceback.format_exc()})
+
+    try:
+        pid = str(prod.get("id") or product_id)
+
+        # Primary image
+        primary_image = None
+        imgs = prod.get("images") or []
+        if imgs:
+            first = imgs[0]
+            if isinstance(first, dict):
+                primary_image = first.get("src") or first.get("url")
+            elif isinstance(first, str):
+                primary_image = first
+        if not primary_image:
+            prv = prod.get("preview")
+            if isinstance(prv, dict):
+                primary_image = prv.get("src") or prv.get("url")
+            elif isinstance(prv, str):
+                primary_image = prv
+
+        # Shopify URL (normalize domain; only build if both domain and handle look sane)
+        shop_domain = (os.getenv("SHOPIFY_STORE_DOMAIN") or "").strip()
+        shop_domain = re.sub(r"^https?://", "", shop_domain).strip("/")  # keep just "yourstore.myshopify.com"
+        ext = prod.get("external") or {}
+        ext_handle = None
+        if isinstance(ext, dict):
+            ext_handle = ext.get("handle") or ext.get("shopify_handle") or ext.get("product_handle")
+        elif isinstance(ext, str):
+            ext_handle = ext.strip()
+
+        shopify_url = None
+        if shop_domain and ext_handle:
+            # basic slug sanity (allow letters, numbers, hyphens)
+            if re.match(r"^[a-z0-9\-]+$", str(ext_handle), flags=re.I):
+                shopify_url = f"https://{shop_domain}/products/{ext_handle}"
+
+        normalized = {
+            "id": pid,
+            "title": prod.get("title") or prod.get("name") or "",
+            "primary_image": primary_image,
+            "published": bool(shopify_url),
+            "shopify_url": shopify_url,
+            "created_at": prod.get("created_at"),
+            "updated_at": prod.get("updated_at"),
+        }
+
+        # Safer cache write: read-modify-write (bypass any strict key validation in store.update)
+        # Safer cache write: normalize whatever store.list() returns into a dict
+        try:
+            existing_any = store.list(PRINTIFY_PRODUCTS_COLLECTION)
+        except Exception:
+            existing_any = None
+
+        cache_map = {}
+        if isinstance(existing_any, dict):
+            cache_map = {str(k): v for k, v in existing_any.items()}
+        elif isinstance(existing_any, list):
+            # convert list of items into {id: item}
+            for it in existing_any:
+                if not isinstance(it, dict):
+                    continue
+                key = str(it.get("id") or it.get("_id") or "").strip()
+                if key:
+                    cache_map[key] = it
+        else:
+            # None or unexpected → start fresh
+            cache_map = {}
+
+        cache_map[str(pid)] = normalized
+
+        # Write back atomically
+        store.replace_collection(PRINTIFY_PRODUCTS_COLLECTION, cache_map)
+
+
+        return jsonify({"ok": True, "product": prod, "normalized": normalized})
+    except Exception as e:
+        # Return rich diagnostics so the frontend alert has something useful
+        return _json_error("Failed to normalize or cache product",
+                           detail={"type": type(e).__name__, "msg": str(e), "trace": traceback.format_exc()})
