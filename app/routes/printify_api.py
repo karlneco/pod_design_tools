@@ -23,6 +23,79 @@ def _to_bool(param):
     return False
 
 
+def _normalize_printify_for_cache(p: dict) -> dict:
+    """
+    Normalize a Printify product into the minimal shape we store in
+    PRINTIFY_PRODUCTS_COLLECTION. Also extracts Shopify product id
+    from product['external'] and keeps it.
+    """
+    pid = str(p.get("id") or p.get("_id") or "")
+
+    # Title
+    title = p.get("title") or p.get("name") or ""
+
+    # Primary image (same logic you already had)
+    primary_image = None
+    imgs = p.get("images") or []
+    if imgs:
+        first = imgs[0]
+        if isinstance(first, dict):
+            primary_image = first.get("src") or first.get("url")
+        elif isinstance(first, str):
+            primary_image = first
+    if not primary_image:
+        prv = p.get("preview")
+        if isinstance(prv, dict):
+            primary_image = prv.get("src") or prv.get("url")
+        elif isinstance(prv, str):
+            primary_image = prv
+
+    # External / Shopify bits
+    ext = p.get("external") or {}
+    shopify_product_id = None
+    shopify_handle = None
+
+    if isinstance(ext, dict):
+        # Common shapes in Printify
+        shopify_product_id = ext.get("id") or ext.get("product_id")
+        shopify_handle = (
+            ext.get("handle")
+            or ext.get("shopify_handle")
+            or ext.get("product_handle")
+        )
+    elif isinstance(ext, str):
+        # Sometimes 'external' is just the id or the handle
+        if ext.isdigit():
+            shopify_product_id = ext
+        else:
+            shopify_handle = ext.strip()
+
+    # Normalize Shopify domain from env
+    shop_domain = (os.getenv("SHOPIFY_STORE_DOMAIN") or "").strip()
+    if shop_domain.startswith("http://") or shop_domain.startswith("https://"):
+        shop_domain = shop_domain.split("://", 1)[1]
+    shop_domain = shop_domain.strip("/")
+
+    shopify_url = None
+    if shop_domain and shopify_handle:
+        shopify_url = f"https://{shop_domain}/products/{shopify_handle}"
+
+    published = bool(shopify_url)
+
+    return {
+        "id": pid,
+        "title": title,
+        "primary_image": primary_image,
+        "published": published,
+        "shopify_url": shopify_url,
+        "shopify_product_id": str(shopify_product_id) if shopify_product_id else None,
+        "shopify_handle": shopify_handle,
+        "created_at": p.get("created_at"),
+        "updated_at": p.get("updated_at"),
+    }
+
+
+
 @bp.get("/printify/colors/<product_id>")
 def api_printify_colors(product_id):
     """Return the distinct color names (and codes if present) available for this product’s blueprint/provider."""
@@ -81,7 +154,6 @@ def update_printify_products_cache():
 
     normalized = {}
     page = 1
-    total = 0
 
     while True:
         page_data = printify.list_products(page=page, limit=100)
@@ -94,86 +166,7 @@ def update_printify_products_cache():
             pid = str(p.get("id") or p.get("_id") or "")
             if not pid:
                 continue
-
-            title = p.get("title") or p.get("name") or ""
-            # main image: tolerate dicts or plain strings; fallback to preview
-            primary_image = None
-            imgs = p.get("images") or []
-            if imgs:
-                first = imgs[0]
-                if isinstance(first, dict):
-                    primary_image = first.get("src") or first.get("url")
-                elif isinstance(first, str):
-                    primary_image = first
-            if not primary_image:
-                prv = p.get("preview")
-                if isinstance(prv, dict):
-                    primary_image = prv.get("src") or prv.get("url")
-                elif isinstance(prv, str):
-                    primary_image = prv
-
-            # Try to link to Shopify product URL if Printify gives external handle/id
-            shopify_url = None
-            ext = p.get("external") or {}
-            # tolerate dict or string shapes
-            if isinstance(ext, dict):
-                ext_handle = ext.get("handle") or ext.get("shopify_handle") or ext.get("product_handle")
-            elif isinstance(ext, str):
-                # in rare cases 'external' may just be the handle
-                ext_handle = ext.strip()
-            else:
-                ext_handle = None
-
-            if ext_handle:
-                shopify_url = f"https://{os.getenv('SHOPIFY_STORE_DOMAIN')}/products/{ext_handle}"
-
-            # Publication status: simply whether we have a Shopify link
-            published = bool(shopify_url)
-
-            # Channel-specific shapes: list, dict, or strings
-            if published is None:
-                published = False
-                sc_props = p.get("sales_channel_properties") or p.get("sales_channels") or []
-                # If it's a dict, check values; if list, iterate items; if string, look for 'published'
-                if isinstance(sc_props, dict):
-                    for v in sc_props.values():
-                        if (isinstance(v, dict) and _to_bool(v.get("published"))) or \
-                                (isinstance(v, str) and "published" in v.lower()):
-                            published = True
-                            break
-                elif isinstance(sc_props, list):
-                    for sc in sc_props:
-                        if isinstance(sc, dict):
-                            if _to_bool(sc.get("published")):
-                                published = True
-                                break
-                        elif isinstance(sc, str):
-                            if "published" in sc.lower():
-                                published = True
-                                break
-                elif isinstance(sc_props, str):
-                    published = "published" in sc_props.lower()
-
-            # Try to link to Shopify product URL if Printify gives external handle/id
-            shopify_url = None
-            ext = p.get("external") or {}
-            ext_handle = ext.get("handle")
-            if ext_handle:
-                shopify_url = f"https://{os.getenv('SHOPIFY_STORE_DOMAIN')}/products/{ext_handle}"
-            else:
-                # sometimes external id exists; if you store a mapping later, plug it here
-                pass
-
-            normalized[pid] = {
-                "id": pid,
-                "title": title,
-                "primary_image": primary_image,
-                "published": bool(published),
-                "shopify_url": shopify_url,
-                "created_at": p.get("created_at"),
-                "updated_at": p.get("updated_at"),
-            }
-            total += 1
+            normalized[pid] = _normalize_printify_for_cache(p)
 
         # pagination end?
         last_page = page_data.get("last_page")
@@ -952,51 +945,11 @@ def api_printify_refresh(product_id):
                            detail={"type": type(e).__name__, "msg": str(e), "trace": traceback.format_exc()})
 
     try:
-        pid = str(prod.get("id") or product_id)
+        # Reuse the same normalizer we use for the bulk cache
+        normalized = _normalize_printify_for_cache(prod)
 
-        # Primary image
-        primary_image = None
-        imgs = prod.get("images") or []
-        if imgs:
-            first = imgs[0]
-            if isinstance(first, dict):
-                primary_image = first.get("src") or first.get("url")
-            elif isinstance(first, str):
-                primary_image = first
-        if not primary_image:
-            prv = prod.get("preview")
-            if isinstance(prv, dict):
-                primary_image = prv.get("src") or prv.get("url")
-            elif isinstance(prv, str):
-                primary_image = prv
+        pid = normalized["id"]
 
-        # Shopify URL (normalize domain; only build if both domain and handle look sane)
-        shop_domain = (os.getenv("SHOPIFY_STORE_DOMAIN") or "").strip()
-        shop_domain = re.sub(r"^https?://", "", shop_domain).strip("/")  # keep just "yourstore.myshopify.com"
-        ext = prod.get("external") or {}
-        ext_handle = None
-        if isinstance(ext, dict):
-            ext_handle = ext.get("handle") or ext.get("shopify_handle") or ext.get("product_handle")
-        elif isinstance(ext, str):
-            ext_handle = ext.strip()
-
-        shopify_url = None
-        if shop_domain and ext_handle:
-            # basic slug sanity (allow letters, numbers, hyphens)
-            if re.match(r"^[a-z0-9\-]+$", str(ext_handle), flags=re.I):
-                shopify_url = f"https://{shop_domain}/products/{ext_handle}"
-
-        normalized = {
-            "id": pid,
-            "title": prod.get("title") or prod.get("name") or "",
-            "primary_image": primary_image,
-            "published": bool(shopify_url),
-            "shopify_url": shopify_url,
-            "created_at": prod.get("created_at"),
-            "updated_at": prod.get("updated_at"),
-        }
-
-        # Safer cache write: read-modify-write (bypass any strict key validation in store.update)
         # Safer cache write: normalize whatever store.list() returns into a dict
         try:
             existing_any = store.list(PRINTIFY_PRODUCTS_COLLECTION)
@@ -1022,7 +975,6 @@ def api_printify_refresh(product_id):
 
         # Write back atomically
         store.replace_collection(PRINTIFY_PRODUCTS_COLLECTION, cache_map)
-
 
         return jsonify({"ok": True, "product": prod, "normalized": normalized})
     except Exception as e:
