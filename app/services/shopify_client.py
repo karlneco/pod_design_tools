@@ -63,3 +63,22 @@ class ShopifyClient:
                 else:
                     break
         return products
+
+    def update_product(self, product_id: str, payload: dict) -> dict:
+        """Update a Shopify product.
+        
+        Args:
+            product_id: The Shopify product ID
+            payload: Dictionary with product fields to update (title, body_html, tags, status, etc.)
+            
+        Returns:
+            The updated product dictionary from Shopify
+        """
+        url = f"{self.base}/products/{product_id}.json"
+        # Shopify API requires the payload to be wrapped in a "product" key
+        request_payload = {"product": payload}
+        with httpx.Client(timeout=60) as client:
+            r = client.put(url, headers=self.headers, json=request_payload)
+            r.raise_for_status()
+            data = r.json()
+            return data.get("product", {})

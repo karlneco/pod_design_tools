@@ -13,6 +13,10 @@
     .tags{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.25rem}
     .tags span{background:#eef;padding:.2rem .5rem;border-radius:999px}
     pre{background:#f7f7f7;border:1px solid #e6e6e6;border-radius:8px;padding:1rem;max-height:50vh;overflow:auto}
+    .actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+    .status-toggle{display:flex;align-items:center;gap:.5rem;margin-top:.25rem}
+    input[type="text"], textarea{width:100%;}
+    textarea{min-height:160px;}
     @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
@@ -21,10 +25,14 @@
   <h1>Edit Shopify Product</h1>
   <nav>
     <a href="/shopify">Back to list</a>
+    {% if from_printify %}
+      <a href="/printify/products/{{ from_printify }}/edit" class="secondary">← Back to Printify</a>
+    {% endif %}
   </nav>
 </header>
 
 <main class="grid">
+  <!-- LEFT PANEL: Image + Link -->
   <section class="card">
     {% if p.primary_image %}
       <img src="{{ p.primary_image }}" alt="{{ p.title }}" style="width:100%;height:auto;border-radius:8px"/>
@@ -40,37 +48,100 @@
     {% endif %}
   </section>
 
+  <!-- RIGHT PANEL: Editable Fields -->
   <section class="card">
-    <h3>{{ p.title }}</h3>
-    {% if p.status %}<p class="muted"><b>Status:</b> {{ p.status }}</p>{% endif %}
+    <form id="shopifyForm">
+      <input type="hidden" id="productId" value="{{ p.id }}"/>
 
-    {% if p.tags and p.tags|length %}
-      <div>
-        <b>Tags:</b>
-        <div class="tags">
-          {% for t in p.tags %}<span>{{ t }}</span>{% endfor %}
+      <label>
+        Product Title
+        <input type="text" id="title" value="{{ p.title }}"/>
+      </label>
+
+      <label>
+        Description (HTML)
+        <textarea id="description">{{ p.description | safe }}</textarea>
+      </label>
+
+      <label>
+        Tags (comma-separated)
+        <input type="text" id="tags" value="{{ p.tags | join(', ') }}"/>
+      </label>
+
+      <label class="status-toggle">
+        <input type="checkbox" id="statusSwitch" {% if p.status == 'active' %}checked{% endif %}/>
+        <span>Active (uncheck for Draft)</span>
+      </label>
+
+      <div class="actions">
+        <div>
+          <button type="button" id="saveBtn">Save Changes</button>
+          <small id="saveStatus" class="muted"></small>
         </div>
+        <button type="button" id="refreshBtn" class="secondary">Update from Shopify</button>
       </div>
-    {% endif %}
-
-    {% if p.description %}
-      <details style="margin-top:.5rem">
-        <summary>Show description</summary>
-        <div style="margin-top:.5rem">{{ p.description | safe }}</div>
-      </details>
-    {% endif %}
+    </form>
 
     <details style="margin-top:1rem">
       <summary>Raw JSON</summary>
       <pre>{{ p.raw | tojson(indent=2) }}</pre>
     </details>
-
-    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
-      <!-- Wire later -->
-      <button type="button" disabled title="Coming soon">Save (disabled)</button>
-      <button type="button" disabled title="Coming soon">Refresh from Shopify (disabled)</button>
-    </div>
   </section>
 </main>
+
+<script>
+const saveBtn = document.getElementById('saveBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+
+saveBtn.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  const title = document.getElementById('title').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const tags = document.getElementById('tags').value.split(',')
+    .map(t => t.trim()).filter(Boolean);
+  const active = document.getElementById('statusSwitch').checked;
+  const status = active ? 'active' : 'draft';
+
+  const saveStatus = document.getElementById('saveStatus');
+  saveStatus.textContent = 'Saving...';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/save`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title, description, tags, status })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    saveStatus.textContent = 'Saved!';
+    console.log('Shopify updated:', data);
+  } catch (e) {
+    alert('Save error: ' + e.message);
+    saveStatus.textContent = 'Error';
+  } finally {
+    saveBtn.disabled = false;
+    setTimeout(()=> saveStatus.textContent='', 1500);
+  }
+});
+
+refreshBtn.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = 'Updating…';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/refresh`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    alert('Product refreshed from Shopify.');
+    location.reload();
+  } catch (e) {
+    alert('Refresh error: ' + e.message);
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = 'Update from Shopify';
+  }
+});
+</script>
 </body>
 </html>

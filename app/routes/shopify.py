@@ -10,6 +10,17 @@ bp = Blueprint("shopify_pages", __name__)
 SHOPIFY_PRODUCTS_COLLECTION = "shopify_products"
 
 
+def _normalize_product_tags(product: dict) -> dict:
+    """Normalize tags from comma-separated string to array format for database storage."""
+    if product and "tags" in product:
+        raw_tags = product["tags"]
+        if isinstance(raw_tags, str):
+            product["tags"] = [t.strip() for t in raw_tags.split(",") if t.strip()]
+        elif not isinstance(raw_tags, list):
+            product["tags"] = []
+    return product
+
+
 @bp.get("/")
 def products_page():
     products = store.list(SHOPIFY_PRODUCTS_COLLECTION)
@@ -48,11 +59,8 @@ def _normalize(p: dict) -> dict:
     """Normalize Shopify product payload -> fields used by our templates."""
     if not p:
         return {}
-    images = p.get("images") or []
-    primary_image = None
-    if images:
-        # Shopify images typically have 'src'
-        primary_image = images[0].get("src")
+    images = p.get("primary_image") or []
+    primary_image = images
 
     # product status: 'active'|'draft'|'archived' (Storefront API/REST may vary)
     status = p.get("status") or p.get("published_scope") or "unknown"
@@ -62,7 +70,7 @@ def _normalize(p: dict) -> dict:
     store_domain = os.getenv("SHOPIFY_STORE_DOMAIN")  # e.g., 'yourshop.myshopify.com'
     public_url = f"https://{store_domain}/products/{handle}" if (store_domain and handle) else None
 
-    body_html = p.get("body_html") or p.get("description_html") or ""
+    body_html = p.get("body_html") or p.get("description") or ""
 
     # tags: can be comma-separated string or list depending on your fetcher
     raw_tags = p.get("tags") or []
@@ -104,6 +112,8 @@ def edit_shopify_product(product_id: str):
         try:
             product = shopify.get_product(product_id)  # implement in your client
             if product:
+                # Normalize tags from comma-separated string to array for database storage
+                product = _normalize_product_tags(product)
                 store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), product)
         except Exception as e:
             current_app.logger.exception("Failed to fetch Shopify product %s", product_id)
@@ -121,4 +131,7 @@ def edit_shopify_product(product_id: str):
             p={"id": product_id, "title": "(not found)", "raw": {"error": "Not in cache and live fetch disabled/unavailable."}}
         ), 404
 
-    return render_template("shopify_edit.html", p=_normalize(product))
+    normalize = _normalize(product)
+    return render_template("shopify_edit.html", p=normalize)
+
+
