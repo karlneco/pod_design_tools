@@ -82,6 +82,11 @@
       </div>
     </form>
 
+    <div style="margin-top:1rem;">
+      <button id="genMockups" type="button">Generate flat-lay mockups</button>
+      <small id="mockupStatus" class="muted"></small>
+    </div>
+
     <details style="margin-top:1rem">
       <summary>Raw JSON</summary>
       <pre>{{ p.raw | tojson(indent=2) }}</pre>
@@ -92,6 +97,7 @@
 <script>
 const saveBtn = document.getElementById('saveBtn');
 const refreshBtn = document.getElementById('refreshBtn');
+const genBtn = document.getElementById('genMockups');
 
 saveBtn.addEventListener('click', async () => {
   const id = document.getElementById('productId').value;
@@ -140,6 +146,28 @@ refreshBtn.addEventListener('click', async () => {
   } finally {
     refreshBtn.disabled = false;
     refreshBtn.textContent = 'Update from Shopify';
+  }
+});
+
+genBtn?.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  const status = document.getElementById('mockupStatus');
+  genBtn.disabled = true;
+  status.textContent = 'Generating mockups…';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/generate_mockups`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    // Navigate to preview page
+    const previewUrl = `/shopify/products/${encodeURIComponent(id)}/mockups`;
+    // Optionally pass results via query or let preview page load from assets
+    window.location.href = previewUrl;
+  } catch (e) {
+    alert('Mockup generation failed: ' + e.message);
+    status.textContent = 'Error';
+  } finally {
+    genBtn.disabled = false;
+    setTimeout(()=> status.textContent = '', 2000);
   }
 });
 </script>

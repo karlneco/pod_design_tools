@@ -1,6 +1,12 @@
 from flask import Blueprint, request, jsonify, current_app
 
 from ..extensions import store, shopify_client as shopify
+from .. import Config
+from ..extensions import printify_client as printify
+from pathlib import Path
+import httpx
+
+from ..utils.mockups import generate_mockups_for_design
 
 bp = Blueprint("shopify_api", __name__)
 
@@ -123,3 +129,124 @@ def api_shopify_refresh(product_id):
     except Exception as e:
         current_app.logger.exception("Shopify refresh failed")
         return jsonify({"error": str(e)}), 400
+
+
+@bp.post("/shopify/products/<product_id>/generate_mockups")
+def api_shopify_generate_mockups(product_id):
+    """Generate flat-lay mockups for a Shopify product.
+
+    Flow:
+      - Find associated Printify product in cached printify_products (shopify_product_id)
+      - Load Printify product JSON and find a FRONT image src for the design
+      - Download the image (or use local /designs/... path) and composite it onto
+        templates in assets/mockups/g64k using generate_mockups_for_design
+      - Save outputs to assets/product_mockups/<product_id> and return their paths
+    """
+    # 1) Find printify product that links to this shopify product
+    pf = None
+    for item in store.list("printify_products"):
+        if str(item.get("shopify_product_id") or "") == str(product_id):
+            pf = item
+            break
+    if not pf:
+        return jsonify({"error": "No associated Printify product found in cache"}), 404
+
+    printify_id = str(pf.get("id") or pf.get("_id") or pf.get("id"))
+    try:
+        prod = printify.get_product(printify_id)
+    except Exception as e:
+        current_app.logger.exception("Failed to fetch Printify product %s", printify_id)
+        return jsonify({"error": f"Failed to fetch Printify product: {e}"}), 400
+
+    # 2) Find a front placeholder image src
+    src = None
+    for pa in (prod.get("print_areas") or []):
+        for ph in (pa.get("placeholders") or []):
+            if (ph.get("position") or "").lower() != "front":
+                continue
+            for img in (ph.get("images") or []):
+                candidate = img.get("src") or img.get("url")
+                if candidate:
+                    src = candidate
+                    break
+            if src:
+                break
+        if src:
+            break
+
+    # fallback to preview or images
+    if not src:
+        src = prod.get("preview") or (prod.get("images") or [None])[0]
+
+    if not src:
+        return jsonify({"error": "Could not find a front design image on Printify product"}), 404
+
+    # 3) Resolve local design path (if /designs/) or download remote URL to tmp
+    design_local_path = None
+    try:
+        if str(src).startswith("/designs/"):
+            # local saved route -> map to filesystem like other routes in the app
+            p = Path("." + str(src))
+            if not p.exists():
+                return jsonify({"error": f"Local design path not found: {p}"}), 404
+            design_local_path = str(p)
+        else:
+            # download
+            tmpdir = Path("data/tmp")
+            tmpdir.mkdir(parents=True, exist_ok=True)
+            suffix = Path(src).suffix or ".png"
+            outtmp = tmpdir / f"shopify_{product_id}_design{suffix}"
+            with httpx.Client(timeout=30) as client:
+                r = client.get(src)
+                r.raise_for_status()
+                outtmp.write_bytes(r.content)
+            design_local_path = str(outtmp)
+    except Exception as e:
+        current_app.logger.exception("Failed to obtain design image")
+        return jsonify({"error": f"Failed to obtain design image: {e}"}), 400
+
+    # 4) Collect template files from assets/mockups/g64k
+    templates_dir = Config.ASSETS_DIR / "mockups" / "g64k"
+    if not templates_dir.exists():
+        return jsonify({"error": f"Templates folder missing: {templates_dir}"}), 500
+    templates = [str(p) for p in sorted(templates_dir.iterdir()) if p.suffix.lower() in Config.ALLOWED_EXTS]
+    if not templates:
+        return jsonify({"error": "No template images found in assets/mockups/g64k"}), 500
+
+    # 5) Generate mockups into assets/product_mockups/<product_id>
+    out_dir = Config.ASSETS_DIR / "product_mockups" / str(product_id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        generated = generate_mockups_for_design(
+            design_png_path=design_local_path,
+            templates=templates,
+            placements={},
+            out_dir=out_dir,
+            scale=1.0,
+        )
+    except Exception as e:
+        current_app.logger.exception("Mockup generation failed")
+        return jsonify({"error": f"Mockup generation failed: {e}"}), 500
+
+    # 6) Rename outputs to match template filenames (e.g., Black.png instead of mockup_Black.png)
+    out_files = []
+    for t in templates:
+        stem = Path(t).stem
+        generated_name = out_dir / f"mockup_{stem}.png"
+        final_name = out_dir / f"{stem}.png"
+        try:
+            if generated_name.exists():
+                # overwrite if exists
+                if final_name.exists():
+                    final_name.unlink(missing_ok=True)
+                generated_name.replace(final_name)
+                out_files.append(final_name)
+        except Exception:
+            # best-effort; include whatever exists
+            if final_name.exists():
+                out_files.append(final_name)
+
+    # 7) Produce relative paths for client preview (relative to project base)
+    rel_out = [str(p.relative_to(Config.BASE_DIR)) for p in sorted(out_files)]
+    return jsonify({"mockups": rel_out})

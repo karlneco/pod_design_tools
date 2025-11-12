@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Mockups Preview</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <style>
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
+    .card{padding:0.5rem;border:1px solid #eee;border-radius:8px;text-align:center}
+    img{max-width:100%;height:auto;border-radius:6px}
+  </style>
+</head>
+<body class="container">
+<header>
+  <h1>Mockups for product {{ id }}</h1>
+  <nav><a href="/shopify/products/{{ id }}/edit">← Back</a></nav>
+</header>
+<main>
+  {% if mockups %}
+    <div class="grid">
+      {% for m in mockups %}
+        <div class="card">
+          <img src="/assets/{{ m }}" alt="Mockup {{ loop.index }}"/>
+          <div style="margin-top:.5rem;font-size:.9rem;color:#555">{{ m.split('/')[-1] }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No mockups found for this product.</p>
+  {% endif %}
+</main>
+</body>
+</html>
+

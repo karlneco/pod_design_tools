@@ -1,8 +1,6 @@
-
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, send_from_directory
 
 from .. import Config
-from ..extensions import store
 
 bp = Blueprint("mockups_pages", __name__)
 
@@ -10,3 +8,8 @@ bp = Blueprint("mockups_pages", __name__)
 def serve_mockup(filename):
     dirpath = Config.MOCKUPS_DIR
     return send_from_directory(dirpath, filename)
+
+
+@bp.get('/assets/<path:filename>')
+def serve_asset(filename: str):
+    return send_from_directory(Config.ASSETS_DIR, filename)

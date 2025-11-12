@@ -1,9 +1,12 @@
 import os
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify, render_template, current_app
+from flask import Blueprint, render_template, current_app, send_from_directory
 
 from ..extensions import store, shopify_client as shopify
+from .. import Config
+from pathlib import Path
+from flask import render_template
 
 bp = Blueprint("shopify_pages", __name__)
 
@@ -135,3 +138,17 @@ def edit_shopify_product(product_id: str):
     return render_template("shopify_edit.html", p=normalize)
 
 
+@bp.get('/products/<product_id>/mockups')
+def shopify_product_mockups(product_id: str):
+    # Look for generated mockups under assets/product_mockups/<product_id>
+    folder = Config.ASSETS_DIR / 'product_mockups' / str(product_id)
+    mockups = []
+    if folder.exists():
+        for p in sorted(folder.iterdir()):
+            if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp'):
+                # Provide path relative to the ASSETS folder so template can reference via /assets/<path>
+                try:
+                    mockups.append(str(p.relative_to(Config.ASSETS_DIR)))
+                except Exception:
+                    mockups.append(str(p.name))
+    return render_template('shopify_mockups.html', id=product_id, mockups=mockups)
