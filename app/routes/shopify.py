@@ -134,8 +134,22 @@ def edit_shopify_product(product_id: str):
             p={"id": product_id, "title": "(not found)", "raw": {"error": "Not in cache and live fetch disabled/unavailable."}}
         ), 404
 
+    # Determine if generated mockups already exist for this product
+    folder = Config.ASSETS_DIR / 'product_mockups' / str(product_id)
+    has_mockups = False
+    mockups_count = 0
+    try:
+        if folder.exists():
+            files = [p for p in folder.iterdir() if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp')]
+            if files:
+                has_mockups = True
+                mockups_count = len(files)
+    except Exception:
+        # non-fatal; leave flags as defaults
+        pass
+
     normalize = _normalize(product)
-    return render_template("shopify_edit.html", p=normalize)
+    return render_template("shopify_edit.html", p=normalize, has_mockups=has_mockups, mockups_count=mockups_count)
 
 
 @bp.get('/products/<product_id>/mockups')

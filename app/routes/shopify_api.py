@@ -58,7 +58,9 @@ def api_shopify_save(product_id):
     if title:
         payload["title"] = title
     payload["body_html"] = desc
-    payload["tags"] = ", ".join(tags)
+    # Send tags as an array of strings to Shopify (avoid storing a single comma string)
+    # Ensure each tag is a clean string
+    payload["tags"] = [str(t).strip() for t in (tags or []) if str(t).strip()]
     if status in ("active", "draft"):
         payload["status"] = status
 

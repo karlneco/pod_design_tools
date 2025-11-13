@@ -83,8 +83,14 @@
     </form>
 
     <div style="margin-top:1rem;">
-      <button id="genMockups" type="button">Generate flat-lay mockups</button>
-      <small id="mockupStatus" class="muted"></small>
+      {% if has_mockups %}
+        <button id="genMockups" type="button">See mockups ({{ mockups_count }})</button>
+        <button id="regenMockups" type="button" class="secondary">Regenerate mockups</button>
+        <small id="mockupStatus" class="muted" style="display:block;margin-top:.5rem">You already have {{ mockups_count }} mockup(s).</small>
+      {% else %}
+        <button id="genMockups" type="button">Generate flat-lay mockups</button>
+        <small id="mockupStatus" class="muted"></small>
+      {% endif %}
     </div>
 
     <details style="margin-top:1rem">
@@ -149,24 +155,52 @@ refreshBtn.addEventListener('click', async () => {
   }
 });
 
+// genMockups button: either navigate to existing mockups, or generate then navigate
 genBtn?.addEventListener('click', async () => {
   const id = document.getElementById('productId').value;
   const status = document.getElementById('mockupStatus');
+  const has = {{ 'true' if has_mockups else 'false' }};
+  const previewUrl = `/shopify/products/${encodeURIComponent(id)}/mockups`;
+  if (has) {
+    // Just navigate to the preview page
+    window.location.href = previewUrl;
+    return;
+  }
+
+  // Otherwise generate mockups
   genBtn.disabled = true;
   status.textContent = 'Generating mockups…';
   try {
-    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/generate_mockups`, { method: 'POST' });
+    const res = await fetch(`{{ url_for('shopify_api.api_shopify_generate_mockups', product_id='') }}/${encodeURIComponent(id)}`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed');
-    // Navigate to preview page
-    const previewUrl = `/shopify/products/${encodeURIComponent(id)}/mockups`;
-    // Optionally pass results via query or let preview page load from assets
     window.location.href = previewUrl;
   } catch (e) {
     alert('Mockup generation failed: ' + e.message);
     status.textContent = 'Error';
   } finally {
     genBtn.disabled = false;
+    setTimeout(()=> status.textContent = '', 2000);
+  }
+});
+
+// Regenerate button: forces generation even if mockups already exist
+const regenBtn = document.getElementById('regenMockups');
+regenBtn?.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  const status = document.getElementById('mockupStatus');
+  regenBtn.disabled = true;
+  status.textContent = 'Regenerating mockups…';
+  try {
+    const res = await fetch(`{{ url_for('shopify_api.api_shopify_generate_mockups', product_id='') }}/${encodeURIComponent(id)}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    window.location.href = `/shopify/products/${encodeURIComponent(id)}/mockups`;
+  } catch (e) {
+    alert('Mockup regeneration failed: ' + e.message);
+    status.textContent = 'Error';
+  } finally {
+    regenBtn.disabled = false;
     setTimeout(()=> status.textContent = '', 2000);
   }
 });

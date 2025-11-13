@@ -2,6 +2,8 @@ import base64
 from pathlib import Path
 import httpx
 from urllib.parse import urlencode
+from io import BytesIO
+from PIL import Image
 
 
 class ShopifyClient:
@@ -21,10 +23,40 @@ class ShopifyClient:
         return f"https://{self.domain.replace('.myshopify.com', '')}.myshopify.com/products/{handle}"
 
     def upload_product_images(self, product_id: str, image_paths: list[str]):
+        """Upload one or more local image files to Shopify.
+
+        Files will be converted to WebP (quality=90) in-memory before encoding to base64
+        to keep payloads small (PNG files can be large). If conversion fails we fall
+        back to the raw file bytes.
+        """
+        def _to_webp_bytes(path: str) -> bytes:
+            try:
+                with Image.open(path) as img:
+                    # Preserve alpha when present; ensure mode is RGB or RGBA
+                    if img.mode not in ("RGB", "RGBA"):
+                        if "A" in img.mode:
+                            img = img.convert("RGBA")
+                        else:
+                            img = img.convert("RGB")
+                    buf = BytesIO()
+                    # Use quality=90 as requested; method=6 gives a good compression/quality tradeoff
+                    img.save(buf, format="WEBP", quality=90, method=6)
+                    return buf.getvalue()
+            except Exception:
+                # Conversion failed; let caller handle fallback
+                raise
+
         uploaded = []
         with httpx.Client(timeout=60) as client:
             for p in image_paths:
-                b64 = base64.b64encode(Path(p).read_bytes()).decode("utf-8")
+                pth = Path(p)
+                try:
+                    img_bytes = _to_webp_bytes(str(pth))
+                except Exception:
+                    # If conversion fails for any reason, fall back to reading raw bytes
+                    img_bytes = pth.read_bytes()
+
+                b64 = base64.b64encode(img_bytes).decode("utf-8")
                 payload = {"image": {"attachment": b64}}
                 url = f"{self.base}/products/{product_id}/images.json"
                 r = client.post(url, headers=self.headers, json=payload)
