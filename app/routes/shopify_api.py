@@ -213,6 +213,62 @@ def api_shopify_generate_mockups(product_id):
     if not templates:
         return jsonify({"error": "No template images found in assets/mockups/g64k"}), 500
 
+    # --- Determine which templates correspond to actual Shopify product colors ---
+    try:
+        # Prefer cached product in our store to avoid extra API call
+        shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id)
+        if not shop_product:
+            shop_product = shopify.get_product(product_id)
+        variants = shop_product.get("variants") if shop_product else []
+    except Exception:
+        current_app.logger.exception("Failed to load Shopify product for variant/color mapping; will generate all templates")
+        variants = []
+
+    # helper to normalize color/title strings for matching
+    def _norm(s: str) -> str:
+        return (s or "").strip().lower()
+
+    # map template stem normalized -> template full path
+    template_map: dict[str, str] = {}
+    for t in templates:
+        stem = Path(t).stem
+        template_map[_norm(stem)] = t
+
+    # Determine colors actually in use (enabled variants only) and map variant -> color title
+    variant_to_title: dict[int, str] = {}
+    used_titles: set[str] = set()
+    for var in (variants or []):
+        try:
+            if var.get("is_enabled", True) is False:
+                continue
+            vid = int(var.get("id") or 0)
+            # Shopify variant color commonly appears in option1 or in the title like "Black / S"
+            ctitle = None
+            if var.get("option1"):
+                ctitle = var.get("option1")
+            elif var.get("option2"):
+                ctitle = var.get("option2")
+            elif var.get("title"):
+                t = var.get("title")
+                ctitle = t.split(" / ")[0] if " / " in t else t
+            if ctitle:
+                ctitle = str(ctitle).strip()
+                variant_to_title[vid] = ctitle
+                used_titles.add(_norm(ctitle))
+        except Exception:
+            continue
+
+    # Pick templates whose normalized stem matches a used title
+    templates_to_generate = []
+    for norm_title in used_titles:
+        if norm_title in template_map:
+            templates_to_generate.append(template_map[norm_title])
+
+    # If we couldn't match any templates, fallback to generating for all templates (preserve previous behavior)
+    if not templates_to_generate:
+        current_app.logger.info("No template names matched Shopify variant colors; generating all templates")
+        templates_to_generate = templates.copy()
+
     # 5) Generate mockups into assets/product_mockups/<product_id>
     out_dir = Config.ASSETS_DIR / "product_mockups" / str(product_id)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -220,7 +276,7 @@ def api_shopify_generate_mockups(product_id):
     try:
         generated = generate_mockups_for_design(
             design_png_path=design_local_path,
-            templates=templates,
+            templates=templates_to_generate,
             placements={},
             out_dir=out_dir,
             scale=1.0,
@@ -231,7 +287,7 @@ def api_shopify_generate_mockups(product_id):
 
     # 6) Rename outputs to match template filenames (e.g., Black.png instead of mockup_Black.png)
     out_files = []
-    for t in templates:
+    for t in templates_to_generate:
         stem = Path(t).stem
         generated_name = out_dir / f"mockup_{stem}.png"
         final_name = out_dir / f"{stem}.png"
@@ -249,4 +305,21 @@ def api_shopify_generate_mockups(product_id):
 
     # 7) Produce relative paths for client preview (relative to project base)
     rel_out = [str(p.relative_to(Config.BASE_DIR)) for p in sorted(out_files)]
-    return jsonify({"mockups": rel_out})
+
+    # 8) Build mapping of variant IDs -> mockup paths for variants whose color matched one of the generated templates
+    variants_to_update: dict[int, str] = {}
+    # Create reverse map: normalized template stem -> relative output path
+    stem_to_relpath: dict[str, str] = {}
+    for p in out_files:
+        stem = _norm(Path(p).stem)
+        try:
+            stem_to_relpath[stem] = str(p.relative_to(Config.BASE_DIR))
+        except Exception:
+            stem_to_relpath[stem] = str(p)
+
+    for vid, title in variant_to_title.items():
+        n = _norm(title)
+        if n in stem_to_relpath:
+            variants_to_update[vid] = stem_to_relpath[n]
+
+    return jsonify({"mockups": rel_out, "variants_to_update": variants_to_update})
