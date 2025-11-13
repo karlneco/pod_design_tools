@@ -16,6 +16,10 @@
   <h1>Mockups for product {{ id }}</h1>
   <nav><a href="/shopify/products/{{ id }}/edit">← Back</a></nav>
 </header>
+<div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+  <button id="save-to-shopify" class="contrast">Save mockups to Shopify</button>
+  <span id="save-status" style="color:#666;font-size:0.95rem"></span>
+</div>
 <main>
   {% if mockups %}
     <div class="grid">
@@ -30,6 +34,54 @@
     <p>No mockups found for this product.</p>
   {% endif %}
 </main>
+
+<script>
+document.getElementById('save-to-shopify').addEventListener('click', async function () {
+  const btn = this;
+  const status = document.getElementById('save-status');
+  btn.disabled = true;
+  status.textContent = 'Saving...';
+  try {
+    // Use url_for to generate the correct endpoint (ensures /api prefix is included)
+    const endpoints = [
+      '{{ url_for("shopify_api.api_shopify_apply_generated_mockups", product_id=id) }}'
+    ];
+    let resp = null;
+    let data = null;
+    for (const ep of endpoints) {
+      try {
+        resp = await fetch(ep, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+      } catch (e) {
+        // network error; try next
+        resp = null;
+      }
+      if (!resp) continue;
+      if (resp.status === 404) {
+        // try next endpoint
+        continue;
+      }
+      // Try to parse JSON safely
+      try { data = await resp.json(); } catch (e) { data = null; }
+      if (!resp.ok) {
+        status.textContent = `Failed (${resp.status}): ${data && data.error ? data.error : resp.statusText}`;
+        btn.disabled = false;
+        return;
+      }
+      // success
+      status.textContent = 'Saved — uploaded ' + (data && data.uploaded ? data.uploaded.length : (data && data.uploaded ? data.uploaded.length : 0)) + ' images.';
+      break;
+    }
+    if (!resp) {
+      status.textContent = 'Failed: could not reach server (network error)';
+    } else if (resp.status === 404) {
+      status.textContent = 'Failed: endpoint not found (404)';
+    }
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
 </body>
 </html>
-

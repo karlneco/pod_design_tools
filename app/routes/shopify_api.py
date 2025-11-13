@@ -383,13 +383,13 @@ def api_shopify_generate_mockups(product_id):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     def _download_to_tmp(src: str, stem: str) -> str:
-        """Download src to data/tmp and return local path."""
+        """Download src to data/tmp and return local path (empty string on failure)."""
         try:
             if str(src).startswith("/designs/"):
                 p = Path("." + str(src))
                 if p.exists():
                     return str(p)
-                return None
+                return ""
             tmpdir = Path("data/tmp")
             tmpdir.mkdir(parents=True, exist_ok=True)
             suffix = Path(src).suffix or ".png"
@@ -400,7 +400,7 @@ def api_shopify_generate_mockups(product_id):
                 outtmp.write_bytes(r.content)
             return str(outtmp)
         except Exception:
-            return None
+            return ""
 
     out_files = []
     for t in templates_to_generate:
@@ -504,3 +504,322 @@ def api_shopify_generate_mockups(product_id):
             variants_to_update[vid] = stem_to_relpath[n]
 
     return jsonify({"mockups": rel_out, "variants_to_update": variants_to_update})
+
+
+@bp.post("/shopify/products/<product_id>/apply_mockups")
+def api_shopify_apply_mockups(product_id: str):
+    """Upload generated mockups and attach them to Shopify variants.
+
+    Request JSON shape:
+      {
+        "variants_to_update": {"<variant_id>": "path/to/mockup.png", ...},
+        "default_variant_id": "<variant_id>"  // optional - sets the product default image
+      }
+
+    The endpoint will:
+      - Upload each provided mockup file to Shopify for the product
+      - Call Shopify product update to attach image ids to the given variant_ids
+      - Optionally set product.image to the chosen default image id
+      - Refresh the cached product in our store and return the updated product JSON
+    """
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception as e:
+        return jsonify({"error": f"Bad JSON in request: {e}"}), 400
+
+    variants_map = body.get("variants_to_update") or {}
+    if not isinstance(variants_map, dict) or not variants_map:
+        return jsonify({"error": "Missing or invalid 'variants_to_update' map"}), 400
+
+    default_variant_id = body.get("default_variant_id")
+
+    # Resolve paths and verify files exist
+    files_to_upload: list[tuple[str, int]] = []  # (path, variant_id)
+    for vid_str, rel_path in variants_map.items():
+        try:
+            vid = int(vid_str)
+        except Exception:
+            return jsonify({"error": f"Invalid variant id: {vid_str}"}), 400
+        # If path is already absolute or relative to BASE_DIR
+        p = Path(rel_path)
+        if not p.is_absolute():
+            p = Config.BASE_DIR / rel_path
+        if not p.exists():
+            return jsonify({"error": f"Mockup file not found: {p}"}), 404
+        files_to_upload.append((str(p), vid))
+
+    uploaded_images: list[dict] = []
+    image_map_by_variant: dict[int, dict] = {}
+    errors = []
+
+    # Upload files one-by-one so we can capture returned image ids
+    for file_path, vid in files_to_upload:
+        try:
+            # Reuse shopify.upload_product_images which accepts a list
+            res = shopify.upload_product_images(product_id, [file_path])
+            if not res or not isinstance(res, list):
+                raise RuntimeError(f"Unexpected upload response: {res}")
+            info = res[0]
+            # Response shape may be {"image": {...}} or {...}
+            img_obj = info.get("image") if isinstance(info, dict) and info.get("image") else info
+            image_id = None
+            if isinstance(img_obj, dict):
+                image_id = img_obj.get("id") or img_obj.get("id")
+            if not image_id:
+                raise RuntimeError(f"Could not determine image id for uploaded file {file_path}: {info}")
+            uploaded_images.append({"file": file_path, "image_id": int(image_id)})
+            image_map_by_variant[vid] = {"image_id": int(image_id), "file": file_path}
+        except Exception as e:
+            current_app.logger.exception("Failed to upload mockup %s", file_path)
+            errors.append({"file": file_path, "error": str(e)})
+
+    if not uploaded_images:
+        return jsonify({"error": "No images were uploaded", "details": errors}), 500
+
+    # Build images payload for Shopify update: include image ids + variant associations
+    images_payload = []
+    for vid, info in image_map_by_variant.items():
+        images_payload.append({"id": info["image_id"], "variant_ids": [int(vid)]})
+
+    # Determine default image id to set: prefer provided default_variant_id else first uploaded
+    default_image_id = None
+    if default_variant_id:
+        try:
+            dvid = int(default_variant_id)
+            default_image_id = image_map_by_variant.get(dvid, {}).get("image_id")
+        except Exception:
+            default_image_id = None
+    if not default_image_id:
+        # pick first uploaded as default
+        default_image_id = uploaded_images[0]["image_id"]
+
+    # Prepare update payload: images list will attach variant_ids; set product.image to default
+    update_payload = {"images": images_payload}
+    if default_image_id:
+        update_payload["image"] = {"id": int(default_image_id)}
+
+    try:
+        updated = shopify.update_product(product_id, update_payload)
+    except Exception as e:
+        current_app.logger.exception("Failed to update Shopify product images for %s", product_id)
+        return jsonify({"error": f"Failed to update Shopify product: {e}", "uploads": uploaded_images, "errors": errors}), 500
+
+    # Refresh cached product in our store
+    refreshed = None
+    try:
+        refreshed = shopify.get_product(product_id)
+        if refreshed:
+            store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+    except Exception:
+        current_app.logger.exception("Failed to refresh Shopify product after image update")
+
+    resp = {
+        "ok": True,
+        "uploaded": uploaded_images,
+        "errors": errors,
+        "updated_product": (refreshed if refreshed is not None else updated)
+    }
+    return jsonify(resp)
+
+
+@bp.post("/shopify/products/<product_id>/apply_generated_mockups")
+def api_shopify_apply_generated_mockups(product_id: str):
+    """Automatically find generated mockups for product_id, map them to Shopify variants by color,
+    upload the images to Shopify, attach them to the matching variant_ids and set the default image.
+
+    Optional JSON body:
+      { "default_variant_id": "<variant_id>" }
+
+    Returns upload results and the refreshed product.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+    except Exception:
+        body = {}
+    default_variant_id = body.get("default_variant_id")
+
+    # 1) Locate generated mockups folder
+    folder = Config.ASSETS_DIR / "product_mockups" / str(product_id)
+    if not folder.exists():
+        return jsonify({"error": f"No generated mockups folder found for product {product_id}"}), 404
+
+    files = [p for p in sorted(folder.iterdir()) if p.suffix.lower() in Config.ALLOWED_EXTS]
+    if not files:
+        return jsonify({"error": "No generated mockup image files found"}), 404
+
+    # Build template stem -> path map
+    def _norm_local(s: str) -> str:
+        return (s or "").strip().lower()
+
+    stem_to_path: dict[str, Path] = {}
+    for p in files:
+        stem_to_path[_norm_local(p.stem)] = p
+
+    # 2) Load Shopify product (cache then live)
+    try:
+        shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id)
+        if not shop_product:
+            shop_product = shopify.get_product(product_id)
+    except Exception:
+        current_app.logger.exception("Failed to load Shopify product for apply_generated_mockups")
+        shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or {}
+
+    if not shop_product:
+        return jsonify({"error": "Shopify product not found (cache or API)"}), 404
+
+    # 3) Build Shopify variant id -> normalized color title map
+    variant_to_title_local: dict[int, str] = {}
+    for var in (shop_product.get("variants") or []):
+        try:
+            if var.get("is_enabled", True) is False:
+                continue
+            vid = int(var.get("id") or 0)
+            ctitle = None
+            if var.get("option1"):
+                ctitle = var.get("option1")
+            elif var.get("option2"):
+                ctitle = var.get("option2")
+            else:
+                opts = var.get("options")
+                if isinstance(opts, list):
+                    for o in opts:
+                        try:
+                            name = (o.get("name") or "").strip().lower()
+                            if name in ("color", "colour"):
+                                ctitle = o.get("value") or o.get("title")
+                                break
+                        except Exception:
+                            continue
+                if not ctitle and var.get("title"):
+                    t = var.get("title")
+                    ctitle = t.split(" / ")[0] if " / " in t else t
+            if ctitle:
+                variant_to_title_local[vid] = str(ctitle).strip()
+        except Exception:
+            continue
+
+    if not variant_to_title_local:
+        return jsonify({"error": "No Shopify variants found or could not resolve variant colors"}), 400
+
+    # 4) Map variants to mockup files by normalized title -> stem path
+    variants_to_file: dict[int, str] = {}
+    unmatched_variants: list[int] = []
+    for vid, title in variant_to_title_local.items():
+        n = _norm_local(title)
+        if n in stem_to_path:
+            variants_to_file[vid] = str(stem_to_path[n].relative_to(Config.BASE_DIR))
+        else:
+            unmatched_variants.append(vid)
+
+    # Try a fuzzy match for unmatched variants
+    if unmatched_variants:
+        try:
+            import difflib as _difflib
+            candidates = list(stem_to_path.keys())
+            for vid in list(unmatched_variants):
+                n = _norm_local(variant_to_title_local.get(vid, ""))
+                matches = _difflib.get_close_matches(n, candidates, n=1, cutoff=0.65)
+                if matches:
+                    variants_to_file[vid] = str(stem_to_path[matches[0]].relative_to(Config.BASE_DIR))
+                    unmatched_variants.remove(vid)
+        except Exception:
+            pass
+
+    if not variants_to_file:
+        return jsonify({"error": "Could not match any Shopify variant colors to generated mockups"}), 400
+
+    # 5) Upload matched mockups to Shopify and attach to variants
+    files_to_upload = {}
+    for vid, rel in variants_to_file.items():
+        # resolve absolute path
+        p = Path(rel)
+        if not p.is_absolute():
+            p = Config.BASE_DIR / rel
+        files_to_upload.setdefault(str(p), []).append(int(vid))
+
+    uploaded_images = []
+    path_to_image_id: dict[str, int] = {}
+    errors = []
+
+    for path_str, vids in files_to_upload.items():
+        try:
+            res = shopify.upload_product_images(product_id, [path_str])
+            if not res or not isinstance(res, list):
+                raise RuntimeError(f"Unexpected upload response: {res}")
+            info = res[0]
+            img_obj = info.get("image") if isinstance(info, dict) and info.get("image") else info
+            image_id = None
+            if isinstance(img_obj, dict):
+                image_id = img_obj.get("id") or img_obj.get("id")
+            if not image_id:
+                raise RuntimeError(f"Could not determine image id for uploaded file {path_str}: {info}")
+            path_to_image_id[path_str] = int(image_id)
+            uploaded_images.append({"file": path_str, "image_id": int(image_id), "variant_ids": vids})
+        except Exception as e:
+            current_app.logger.exception("Failed to upload mockup %s", path_str)
+            errors.append({"file": path_str, "error": str(e)})
+
+    if not uploaded_images:
+        return jsonify({"error": "No images were uploaded", "details": errors}), 500
+
+    # 6) Build images payload for Shopify update
+    images_payload = []
+    for path_str, vids in files_to_upload.items():
+        img_id = path_to_image_id.get(path_str)
+        if img_id:
+            images_payload.append({"id": img_id, "variant_ids": vids})
+
+    # 7) Determine default image id to set
+    default_image_id = None
+    if default_variant_id:
+        try:
+            dvid = int(default_variant_id)
+            # find corresponding path
+            dpath = variants_to_file.get(dvid)
+            if dpath:
+                p_abs = Config.BASE_DIR / dpath if not Path(dpath).is_absolute() else Path(dpath)
+                default_image_id = path_to_image_id.get(str(p_abs))
+        except Exception:
+            default_image_id = None
+
+    # If still none, try to pick a variant flagged as default in Shopify
+    if not default_image_id:
+        for v in (shop_product.get("variants") or []):
+            try:
+                if v.get("is_default") and int(v.get("id")) in variants_to_file:
+                    p_rel = variants_to_file[int(v.get("id"))]
+                    p_abs = Config.BASE_DIR / p_rel if not Path(p_rel).is_absolute() else Path(p_rel)
+                    default_image_id = path_to_image_id.get(str(p_abs))
+                    break
+            except Exception:
+                continue
+
+    # Fallback: first uploaded image
+    if not default_image_id:
+        default_image_id = uploaded_images[0].get("image_id")
+
+    update_payload = {"images": images_payload}
+    if default_image_id:
+        update_payload["image"] = {"id": int(default_image_id)}
+
+    try:
+        updated = shopify.update_product(product_id, update_payload)
+    except Exception as e:
+        current_app.logger.exception("Failed to update Shopify product images for %s", product_id)
+        return jsonify({"error": f"Failed to update Shopify product: {e}", "uploads": uploaded_images, "errors": errors}), 500
+
+    # Refresh cached product
+    try:
+        refreshed = shopify.get_product(product_id)
+        if refreshed:
+            store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+    except Exception:
+        current_app.logger.exception("Failed to refresh Shopify product after image update")
+
+    resp = {
+        "ok": True,
+        "uploaded": uploaded_images,
+        "errors": errors,
+        "updated_product": (refreshed if refreshed is not None else updated)
+    }
+    return jsonify(resp)
