@@ -14,7 +14,6 @@ from app.services import openai_svc
 class TestOpenAIService:
     """Tests for OpenAI service functions."""
 
-    @respx.mock
     def test_suggest_metadata_success(self, mock_env_vars, tmp_path):
         """Test successful metadata suggestion."""
         # Create mock documentation files
@@ -50,23 +49,23 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        result = openai_svc.suggest_metadata(
-            title_hint="Mountain Sunset",
-            collections=["Nature", "Travel"],
-            notes="Minimalist design",
-            docs_paths=docs_paths
-        )
+            result = openai_svc.suggest_metadata(
+                title_hint="Mountain Sunset",
+                collections=["Nature", "Travel"],
+                notes="Minimalist design",
+                docs_paths=docs_paths
+            )
 
         assert result["title"] == "Mountain Sunset T-Shirt"
         assert "mountain" in result["description"].lower()
         assert "mountain" in result["keywords"]
         assert "nature" in result["tags"]
 
-    @respx.mock
     def test_suggest_metadata_parsing_fallback(self, mock_env_vars, tmp_path):
         """Test metadata suggestion with unparseable response."""
         docs_paths = {
@@ -84,38 +83,38 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        result = openai_svc.suggest_metadata(
-            title_hint="Test",
-            collections=[],
-            notes="",
-            docs_paths=docs_paths
-        )
-
-        # Should fall back to putting entire content in description
-        assert result["description"] == "This is an unstructured response without clear markers."
-
-    @respx.mock
-    def test_suggest_metadata_api_error(self, mock_env_vars):
-        """Test metadata suggestion when API returns error."""
-        docs_paths = {"personas_pdf": "", "principles": "", "policies": ""}
-
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(500, json={"error": "Server error"})
-        )
-
-        with pytest.raises(httpx.HTTPStatusError):
-            openai_svc.suggest_metadata(
+            result = openai_svc.suggest_metadata(
                 title_hint="Test",
                 collections=[],
                 notes="",
                 docs_paths=docs_paths
             )
 
-    @respx.mock
+        # Should fall back to putting entire content in description
+        assert result["description"] == "This is an unstructured response without clear markers."
+
+    def test_suggest_metadata_api_error(self, mock_env_vars):
+        """Test metadata suggestion when API returns error."""
+        docs_paths = {"personas_pdf": "", "principles": "", "policies": ""}
+
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(500, json={"error": "Server error"})
+            )
+
+            with pytest.raises(httpx.HTTPStatusError):
+                openai_svc.suggest_metadata(
+                    title_hint="Test",
+                    collections=[],
+                    notes="",
+                    docs_paths=docs_paths
+                )
+
     def test_suggest_colors_with_json_response(self, mock_env_vars):
         """Test color suggestions with proper JSON response."""
         mock_response = {
@@ -130,22 +129,22 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        result = openai_svc.suggest_colors(
-            design_title="Mountain Design",
-            collections=["Nature"],
-            notes="Outdoor theme"
-        )
+            result = openai_svc.suggest_colors(
+                design_title="Mountain Design",
+                collections=["Nature"],
+                notes="Outdoor theme"
+            )
 
         assert len(result) == 3
         assert result[0]["name"] == "Black"
         assert result[0]["hex"] == "#000000"
         assert "why" in result[0]
 
-    @respx.mock
     def test_suggest_colors_with_text_wrapper(self, mock_env_vars):
         """Test color suggestions when JSON is wrapped in text."""
         mock_response = {
@@ -162,21 +161,21 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        result = openai_svc.suggest_colors(
-            design_title="Nature Design",
-            collections=["Outdoor"],
-            notes=""
-        )
+            result = openai_svc.suggest_colors(
+                design_title="Nature Design",
+                collections=["Outdoor"],
+                notes=""
+            )
 
         assert len(result) == 2
         assert result[0]["name"] == "Forest Green"
         assert result[1]["hex"] == "#87CEEB"
 
-    @respx.mock
     def test_suggest_colors_fallback(self, mock_env_vars):
         """Test color suggestions fallback to defaults on parse error."""
         mock_response = {
@@ -187,34 +186,35 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        result = openai_svc.suggest_colors(
-            design_title="Test",
-            collections=[],
-            notes=""
-        )
+            result = openai_svc.suggest_colors(
+                design_title="Test",
+                collections=[],
+                notes=""
+            )
 
         # Should return fallback colors
         assert len(result) == 2
         assert result[0]["name"] == "Black"
         assert result[1]["name"] == "White"
 
-    @respx.mock
     def test_suggest_colors_api_error(self, mock_env_vars):
         """Test color suggestions when API returns error."""
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(429, json={"error": "Rate limit exceeded"})
-        )
-
-        with pytest.raises(httpx.HTTPStatusError):
-            openai_svc.suggest_colors(
-                design_title="Test",
-                collections=[],
-                notes=""
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(429, json={"error": "Rate limit exceeded"})
             )
+
+            with pytest.raises(httpx.HTTPStatusError):
+                openai_svc.suggest_colors(
+                    design_title="Test",
+                    collections=[],
+                    notes=""
+                )
 
     def test_read_file_safely_existing_file(self, tmp_path):
         """Test _read_file_safely with existing file."""
@@ -242,7 +242,6 @@ class TestOpenAIService:
 
         assert len(result) == 120000
 
-    @respx.mock
     def test_chat_function_formats_request_correctly(self, mock_env_vars):
         """Test that _chat function formats the API request correctly."""
         mock_response = {
@@ -251,27 +250,27 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        messages = [
-            {"role": "system", "content": "System prompt"},
-            {"role": "user", "content": "User message"}
-        ]
+            messages = [
+                {"role": "system", "content": "System prompt"},
+                {"role": "user", "content": "User message"}
+            ]
 
-        result = openai_svc._chat(messages)
+            result = openai_svc._chat(messages)
 
-        assert result == "Test response"
+            assert result == "Test response"
 
-        # Verify request structure
-        request = respx.calls.last.request
-        payload = json.loads(request.content)
-        assert payload["model"] == "gpt-4o-mini"
-        assert payload["messages"] == messages
-        assert payload["temperature"] == 0.6
+            # Verify request structure
+            request = respx.calls.last.request
+            payload = json.loads(request.content)
+            assert payload["model"] == "gpt-4o-mini"
+            assert payload["messages"] == messages
+            assert payload["temperature"] == 0.6
 
-    @respx.mock
     def test_custom_openai_base_url(self, mock_env_vars, monkeypatch):
         """Test using custom OpenAI base URL."""
         # Note: This test verifies the module can handle custom base URLs
@@ -283,16 +282,16 @@ class TestOpenAIService:
             }]
         }
 
-        # Mock the default OpenAI base URL
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            # Mock the default OpenAI base URL
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        result = openai_svc._chat([{"role": "user", "content": "Test"}])
+            result = openai_svc._chat([{"role": "user", "content": "Test"}])
 
         assert result == "Response"
 
-    @respx.mock
     def test_suggest_metadata_includes_docs_in_prompt(self, mock_env_vars, tmp_path):
         """Test that suggest_metadata includes documentation in the prompt."""
         personas_file = tmp_path / "personas.md"
@@ -310,19 +309,20 @@ class TestOpenAIService:
             }]
         }
 
-        respx.post("https://api.openai.com/v1/chat/completions").mock(
-            return_value=httpx.Response(200, json=mock_response)
-        )
+        with respx.mock:
+            respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=httpx.Response(200, json=mock_response)
+            )
 
-        openai_svc.suggest_metadata(
-            title_hint="Test",
-            collections=[],
-            notes="",
-            docs_paths=docs_paths
-        )
+            openai_svc.suggest_metadata(
+                title_hint="Test",
+                collections=[],
+                notes="",
+                docs_paths=docs_paths
+            )
 
-        # Verify the request includes personas content
-        request = respx.calls.last.request
-        payload = json.loads(request.content)
-        user_message = payload["messages"][1]["content"]
-        assert "outdoor enthusiasts" in user_message
+            # Verify the request includes personas content
+            request = respx.calls.last.request
+            payload = json.loads(request.content)
+            user_message = payload["messages"][1]["content"]
+            assert "outdoor enthusiasts" in user_message
