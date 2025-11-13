@@ -809,10 +809,15 @@ def api_shopify_apply_generated_mockups(product_id: str):
         return jsonify({"error": f"Failed to update Shopify product: {e}", "uploads": uploaded_images, "errors": errors}), 500
 
     # Refresh cached product
+    refreshed = None
     try:
-        refreshed = shopify.get_product(product_id)
-        if refreshed:
-            store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+        # shopify.get_product may not exist on all client implementations; guard it
+        if hasattr(shopify, 'get_product') and callable(getattr(shopify, 'get_product')):
+            refreshed = shopify.get_product(product_id)
+            if refreshed:
+                store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+        else:
+            current_app.logger.info("Shopify client has no get_product method; skipping refresh")
     except Exception:
         current_app.logger.exception("Failed to refresh Shopify product after image update")
 

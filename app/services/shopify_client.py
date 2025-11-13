@@ -82,3 +82,13 @@ class ShopifyClient:
             r.raise_for_status()
             data = r.json()
             return data.get("product", {})
+
+    def get_product(self, product_id: str) -> dict:
+        """Fetch a single product by ID from Shopify (returns product dict or raises)."""
+        url = f"{self.base}/products/{product_id}.json"
+        with httpx.Client(timeout=60) as client:
+            r = client.get(url, headers=self.headers)
+            r.raise_for_status()
+            data = r.json()
+            # Shopify returns { "product": { ... } }
+            return data.get("product", {})
