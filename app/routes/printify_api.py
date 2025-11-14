@@ -59,9 +59,9 @@ def _normalize_printify_for_cache(p: dict) -> dict:
         # Common shapes in Printify
         shopify_product_id = ext.get("id") or ext.get("product_id")
         shopify_handle = (
-            ext.get("handle")
-            or ext.get("shopify_handle")
-            or ext.get("product_handle")
+                ext.get("handle")
+                or ext.get("shopify_handle")
+                or ext.get("product_handle")
         )
     elif isinstance(ext, str):
         # Sometimes 'external' is just the id or the handle
@@ -93,7 +93,6 @@ def _normalize_printify_for_cache(p: dict) -> dict:
         "created_at": p.get("created_at"),
         "updated_at": p.get("updated_at"),
     }
-
 
 
 @bp.get("/printify/colors/<product_id>")
@@ -532,16 +531,6 @@ def api_printify_save(product_id):
             Path("data/designs") / pid,  # CWD-relative fallback
         ]
 
-    def _debug_list_dir(p: Path):
-        try:
-            if p.exists():
-                items = [f.name for f in p.iterdir()]
-                log.info("[SAVE] Dir exists %s: %r", str(p), items)
-            else:
-                log.info("[SAVE] Dir missing %s", str(p))
-        except Exception as e:
-            log.warning("[SAVE] Could not list %s: %s", str(p), e)
-
     def find_local(pid: str, which: str) -> tuple[Path, str] | None:
 
         """
@@ -595,27 +584,6 @@ def api_printify_save(product_id):
         up = printify.upload_image_file(file_path=str(path[0]), file_name=path[1])
         return up.get("id")
 
-    def ensure_upload(path: Path | None) -> str | None:
-        """
-        Upload a local file to Printify and return its image id.
-        Logs path, size, and response for debugging.
-        """
-
-        if not path:
-            return None
-        try:
-            size = path.stat().st_size
-        except Exception:
-            size = -1
-        log.info("[SAVE] Uploading %s (%s bytes)", str(path), size)
-        try:
-            up = printify.upload_image_file(file_path=str(path), file_name=path.name)
-            iid = up.get("id")
-            log.info("[SAVE] Uploaded %s => image_id=%s", path.name, iid)
-            return iid
-        except Exception as e:
-            log.error("[SAVE] Upload failed for %s: %s", str(path), e)
-            return None
 
     default_image_path = find_local(str(product_id), "light")
     dark_path = None if single_mode else find_local(str(product_id), "dark")
@@ -933,6 +901,7 @@ def api_printify_save(product_id):
             "print_areas_count": len(patch.get("print_areas", []))
         }
     })
+
 
 @bp.post("/printify/products/<product_id>/refresh")
 def api_printify_refresh(product_id):
