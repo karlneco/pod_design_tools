@@ -161,7 +161,6 @@ def update_printify_products_cache():
         data_list = page_data.get("data") or page_data.get("products") or []
         if not data_list:
             break
-
         for p in data_list:
             pid = str(p.get("id") or p.get("_id") or "")
             if not pid:
@@ -279,18 +278,25 @@ def api_printify_extract_colors(product_id: str):
 def apply_design(product_id):
     """
     Form-data or JSON:
-      - which: "light"|"dark" (required)
+      - which: "light"|"dark" (required) - can be query param, form field, or JSON
       - file: (optional) image file to upload
       - use_saved: "1"|"true" (optional) to use /data/designs/<product_id>/<which>.* if no file provided
     Returns: { image_id, src, product }
     """
-    which = (request.form.get("which") or request.json.get("which") if request.is_json else None)
+    # Try to get 'which' from: query args > form data > JSON body
+    which = (request.args.get("which") or
+             request.form.get("which") or
+             (request.json.get("which") if request.is_json else None))
     if which not in ("light", "dark"):
         return jsonify({"error": "which must be 'light' or 'dark'"}), 400
 
     # Determine source image
     upload_file = request.files.get("file")
-    use_saved = (request.form.get("use_saved") or "").lower() in ("1", "true") if upload_file is None else False
+    # Try to get 'use_saved' from: query args > form data > JSON body
+    use_saved_param = (request.args.get("use_saved") or
+                       request.form.get("use_saved") or
+                       (request.json.get("use_saved") if request.is_json else None))
+    use_saved = str(use_saved_param or "").lower() in ("1", "true") if upload_file is None else False
     local_path = None
 
     if upload_file is None and use_saved:

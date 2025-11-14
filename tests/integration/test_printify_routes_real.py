@@ -152,6 +152,175 @@ class TestPrintifyBasicAPI:
             data = response.get_json()
             assert "error" in data
 
+    def test_get_colors_missing_print_provider(self, client):
+        """Test GET /api/printify/colors/<product_id> returns 400 when print_provider_id missing."""
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            # Product missing print_provider_id
+            mock_printify.get_product.return_value = {
+                "id": "test",
+                "title": "Test",
+                "blueprint_id": 145
+            }
+
+            response = client.get('/api/printify/colors/test')
+
+            assert response.status_code == 400
+            data = response.get_json()
+            assert "error" in data
+            assert "blueprint_id or print_provider_id" in data["error"]
+
+    def test_get_colors_with_real_product(self, client, real_printify_product_1):
+        """Test GET /api/printify/colors with real product that has many colors."""
+        product_id = "68472c8f1ad64b2e330ff9a7"
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            # Return the real product
+            mock_printify.get_product.return_value = real_printify_product_1
+
+            # Mock the blueprint provider variants call to return real-world variants
+            # Real product has blueprint_id=145 and print_provider_id=39
+            variants_response = {
+                "variants": [
+                    {"id": 1001, "options": {"color": "Black", "size": "S"}},
+                    {"id": 1002, "options": {"color": "Black", "size": "M"}},
+                    {"id": 1003, "options": {"color": "Black", "size": "L"}},
+                    {"id": 2001, "options": {"color": "White", "size": "S"}},
+                    {"id": 2002, "options": {"color": "White", "size": "M"}},
+                    {"id": 2003, "options": {"color": "White", "size": "L"}},
+                    {"id": 3001, "options": {"color": "Navy", "size": "S"}},
+                    {"id": 3002, "options": {"color": "Navy", "size": "M"}},
+                ]
+            }
+            mock_printify.get_blueprint_provider_variants.return_value = variants_response
+
+            response = client.get(f'/api/printify/colors/{product_id}')
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["blueprint_id"] == 145
+            assert data["print_provider_id"] == 39
+            assert "colors" in data
+            assert "color_variants" in data
+            # Should have 3 distinct colors
+            assert len(data["colors"]) == 3
+            assert "Black" in data["colors"]
+            assert "White" in data["colors"]
+            assert "Navy" in data["colors"]
+            # Each color should have variant IDs
+            assert data["color_variants"]["Black"] == [1001, 1002, 1003]
+            assert data["color_variants"]["White"] == [2001, 2002, 2003]
+            assert data["color_variants"]["Navy"] == [3001, 3002]
+
+    def test_get_colors_api_error_handling(self, client):
+        """Test GET /api/printify/colors returns 404 when provider not found."""
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.get_product.return_value = {
+                "id": "test",
+                "blueprint_id": 999,
+                "print_provider_id": 999
+            }
+
+            # Simulate API error when getting blueprint provider variants
+            mock_printify.get_blueprint_provider_variants.side_effect = Exception("Provider not found")
+
+            # Mock list_blueprint_providers as fallback
+            mock_printify.list_blueprint_providers.return_value = {
+                "providers": [
+                    {"id": 1, "name": "Provider 1"},
+                    {"id": 39, "name": "Provider 39"}
+                ]
+            }
+
+            response = client.get('/api/printify/colors/test')
+
+            assert response.status_code == 404
+            data = response.get_json()
+            assert "error" in data
+            assert "Provider 999 not found" in data["error"]
+            assert "available_providers" in data
+
+    def test_get_colors_variants_as_list(self, client):
+        """Test GET /api/printify/colors handles variants returned as list instead of dict."""
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.get_product.return_value = {
+                "id": "test",
+                "blueprint_id": 145,
+                "print_provider_id": 39
+            }
+
+            # API returns variants as a list directly (not wrapped in {"variants": [...]})
+            variants_list = [
+                {"id": 101, "options": {"color": "Red", "size": "S"}},
+                {"id": 102, "options": {"color": "Red", "size": "M"}},
+                {"id": 103, "options": {"color": "Blue", "size": "S"}},
+            ]
+            mock_printify.get_blueprint_provider_variants.return_value = variants_list
+
+            response = client.get('/api/printify/colors/test')
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data["colors"]) == 2
+            assert "Red" in data["colors"]
+            assert "Blue" in data["colors"]
+            assert data["color_variants"]["Red"] == [101, 102]
+            assert data["color_variants"]["Blue"] == [103]
+
+    def test_get_colors_no_options(self, client):
+        """Test GET /api/printify/colors handles variants with no color options."""
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.get_product.return_value = {
+                "id": "test",
+                "blueprint_id": 145,
+                "print_provider_id": 39
+            }
+
+            # Variants with no color option
+            variants_response = {
+                "variants": [
+                    {"id": 101, "options": {"size": "S"}},
+                    {"id": 102, "options": {"size": "M"}},
+                    {"id": 103, "options": {}},
+                ]
+            }
+            mock_printify.get_blueprint_provider_variants.return_value = variants_response
+
+            response = client.get('/api/printify/colors/test')
+
+            assert response.status_code == 200
+            data = response.get_json()
+            # Should return empty colors list when no color options found
+            assert len(data["colors"]) == 0
+            assert len(data["color_variants"]) == 0
+
+    def test_get_colors_alternative_color_field_names(self, client):
+        """Test GET /api/printify/colors handles alternative color field names (Color, colour, Colour)."""
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.get_product.return_value = {
+                "id": "test",
+                "blueprint_id": 145,
+                "print_provider_id": 39
+            }
+
+            # API returns with different color field name casing
+            variants_response = {
+                "variants": [
+                    {"id": 101, "options": {"Color": "Red", "size": "S"}},  # Capital C
+                    {"id": 102, "options": {"colour": "Blue", "size": "M"}},  # British spelling
+                    {"id": 103, "options": {"Colour": "Green", "size": "L"}},  # Capital British
+                ]
+            }
+            mock_printify.get_blueprint_provider_variants.return_value = variants_response
+
+            response = client.get('/api/printify/colors/test')
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert len(data["colors"]) == 3
+            assert "Red" in data["colors"]
+            assert "Blue" in data["colors"]
+            assert "Green" in data["colors"]
+
 
 @pytest.mark.integration
 class TestPrintifyCacheManagement:
@@ -493,6 +662,365 @@ class TestPrintifyComplexLogic:
         unique_images = set(front_images.values())
         # This product has light design for some colors, dark design for others
         assert len(unique_images) >= 1
+
+
+@pytest.mark.integration
+class TestPrintifyApplyDesign:
+    """Test the apply_design endpoint error handling."""
+
+    def test_apply_design_missing_which_param(self, client):
+        """Test POST /api/printify/products/<id>/apply_design returns 400 when 'which' missing."""
+        response = client.post(
+            '/api/printify/products/test123/apply_design',
+            json={},
+            content_type='application/json'
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "error" in data
+        assert "which" in data["error"].lower()
+
+    def test_apply_design_invalid_which_param(self, client):
+        """Test POST /api/printify/products/<id>/apply_design returns 400 for invalid 'which'."""
+        response = client.post(
+            '/api/printify/products/test123/apply_design',
+            json={"which": "invalid"},
+            content_type='application/json'
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "error" in data
+        assert "which" in data["error"].lower()
+
+    def test_apply_design_with_file_upload(self, client, tmp_path, monkeypatch):
+        """Test POST /api/printify/products/<id>/apply_design with file upload.
+
+        Note: The endpoint can extract 'which' from either request.form or request.json.
+        When sending multipart file data, we send which as a form field.
+        """
+        product_id = "test_product_design"
+
+        # Change to tmp directory so file operations work
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+
+            # Mock the upload response
+            mock_printify.upload_image_file.return_value = {
+                "id": "img_uploaded_123",
+                "src": "https://cdn.printify.com/img_uploaded_123.png"
+            }
+
+            # Mock product get and update
+            mock_product = {
+                "id": product_id,
+                "title": "Test Product",
+                "print_areas": [{
+                    "placeholders": [{
+                        "position": "front",
+                        "images": [{"id": "img_uploaded_123", "src": "https://cdn.printify.com/img_uploaded_123.png"}]
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product
+            mock_printify.ensure_front_with_image.return_value = {"print_areas": []}
+            mock_printify.update_product.return_value = mock_product
+
+            # Create a fake PNG file
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+
+            # The endpoint logic is: which = (request.form.get("which") or request.json.get("which") if request.is_json else None)
+            # When we send multipart with file, use form fields. Let's send as form fields explicitly
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design?which=light',
+                data={"file": (fake_file, "design.png")}
+            )
+
+            # Display error if not 200
+            if response.status_code != 200:
+                error_data = response.get_json()
+                print(f"\nStatus: {response.status_code}")
+                print(f"Error: {error_data.get('error') if error_data else 'No JSON'}")
+
+            assert response.status_code == 200, f"Got {response.status_code}: {response.get_json()}"
+            data = response.get_json()
+            assert "image_id" in data
+            assert data["image_id"] == "img_uploaded_123"
+            assert "src" in data
+            assert "product" in data
+
+    def test_apply_design_upload_fails(self, client, tmp_path, monkeypatch):
+        """Test POST /api/printify/products/<id>/apply_design handles upload failure."""
+        product_id = "test_product_fail"
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            # Mock failed upload response
+            mock_printify.upload_image_file.return_value = {"error": "Upload failed"}
+
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n")
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design?which=light',
+                data={"file": (fake_file, "design.png")}
+            )
+
+            assert response.status_code == 400
+            data = response.get_json()
+            assert "error" in data
+            assert "Upload to Printify failed" in data["error"]
+
+    def test_apply_design_with_use_saved_flag(self, client, tmp_path, monkeypatch):
+        """Test POST /api/printify/products/<id>/apply_design with use_saved flag."""
+        product_id = "test_product_saved"
+
+        # Change to tmp directory so the endpoint finds the saved file
+        monkeypatch.chdir(tmp_path)
+
+        # Create a temporary design file
+        designs_dir = tmp_path / "data" / "designs" / product_id
+        designs_dir.mkdir(parents=True, exist_ok=True)
+        design_file = designs_dir / "light.png"
+        design_file.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 128)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+
+            # Setup mocks
+            mock_printify.upload_image_file.return_value = {
+                "id": "img_saved_456"
+            }
+
+            mock_product = {
+                "id": product_id,
+                "print_areas": [{
+                    "placeholders": [{
+                        "position": "front",
+                        "images": [{"id": "img_saved_456"}]
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product
+            mock_printify.ensure_front_with_image.return_value = {}
+            mock_printify.update_product.return_value = mock_product
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design',
+                json={
+                    "which": "light",
+                    "use_saved": "1"
+                },
+                content_type='application/json'
+            )
+
+            # Should succeed because we created the file and changed to tmp_path
+            assert response.status_code == 200
+            data = response.get_json()
+            assert "image_id" in data
+            assert data["image_id"] == "img_saved_456"
+
+    def test_apply_design_use_saved_file_not_found(self, client):
+        """Test POST /api/printify/products/<id>/apply_design returns 404 when saved file missing."""
+        product_id = "test_product_notfound"
+
+        response = client.post(
+            f'/api/printify/products/{product_id}/apply_design',
+            json={
+                "which": "dark",
+                "use_saved": "1"
+            },
+            content_type='application/json'
+        )
+
+        assert response.status_code == 404
+        data = response.get_json()
+        assert "error" in data
+        assert "No saved design file found" in data["error"]
+
+    def test_apply_design_light_variant(self, client, tmp_path, monkeypatch):
+        """Test apply_design with 'light' variant succeeds."""
+        product_id = "test_light"
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.upload_image_file.return_value = {"id": "img_light_789"}
+            mock_product = {
+                "id": product_id,
+                "print_areas": [{
+                    "placeholders": [{
+                        "position": "front",
+                        "images": [{"id": "img_light_789", "src": "https://example.com/img.png"}]
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product
+            mock_printify.ensure_front_with_image.return_value = {}
+            mock_printify.update_product.return_value = mock_product
+
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n")
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design?which=light',
+                data={"file": (fake_file, "light_design.png")}
+            )
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["image_id"] == "img_light_789"
+            # Verify ensure_front_with_image was called with correct params
+            mock_printify.ensure_front_with_image.assert_called_once()
+            call_args = mock_printify.ensure_front_with_image.call_args
+            assert call_args[1]["image_id"] == "img_light_789"
+            assert call_args[1]["x"] == 0.5
+            assert call_args[1]["y"] == 0.5
+            assert call_args[1]["scale"] == 1.0
+            assert call_args[1]["angle"] == 0
+
+    def test_apply_design_dark_variant(self, client, tmp_path, monkeypatch):
+        """Test apply_design with 'dark' variant succeeds."""
+        product_id = "test_dark"
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.upload_image_file.return_value = {"id": "img_dark_999"}
+            mock_product = {
+                "id": product_id,
+                "print_areas": [{
+                    "placeholders": [{
+                        "position": "front",
+                        "images": [{"id": "img_dark_999", "src": "https://example.com/dark.png"}]
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product
+            mock_printify.ensure_front_with_image.return_value = {}
+            mock_printify.update_product.return_value = mock_product
+
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n")
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design?which=dark',
+                data={"file": (fake_file, "dark_design.png")}
+            )
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["image_id"] == "img_dark_999"
+            assert "src" in data
+
+    def test_apply_design_resolves_image_src(self, client, tmp_path, monkeypatch):
+        """Test apply_design correctly resolves image src from updated product."""
+        product_id = "test_src_resolve"
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.upload_image_file.return_value = {"id": "img_resolve_111"}
+
+            # Mock product with image src resolved after update
+            mock_product_after = {
+                "id": product_id,
+                "print_areas": [{
+                    "position": "front",
+                    "placeholders": [{
+                        "position": "front",
+                        "images": [{
+                            "id": "img_resolve_111",
+                            "src": "https://cdn.printify.com/resolved-image-url.png",
+                            "url": "https://cdn.printify.com/fallback-url.png"
+                        }]
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product_after
+            mock_printify.ensure_front_with_image.return_value = {}
+            mock_printify.update_product.return_value = mock_product_after
+
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n")
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design?which=light',
+                data={"file": (fake_file, "test.png")}
+            )
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["src"] == "https://cdn.printify.com/resolved-image-url.png"
+
+    def test_apply_design_handles_missing_placeholder_images(self, client, tmp_path, monkeypatch):
+        """Test apply_design handles case where placeholder has no images."""
+        product_id = "test_no_images"
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.upload_image_file.return_value = {"id": "img_no_images_222"}
+
+            # Product with placeholder but no images
+            mock_product = {
+                "id": product_id,
+                "print_areas": [{
+                    "placeholders": [{
+                        "position": "front",
+                        "images": []
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product
+            mock_printify.ensure_front_with_image.return_value = {}
+            mock_printify.update_product.return_value = mock_product
+
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n")
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design?which=light',
+                data={"file": (fake_file, "test.png")}
+            )
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["image_id"] == "img_no_images_222"
+            assert "src" in data  # src may be None, but key should exist
+            assert data["src"] is None  # No matching image found
+
+    def test_apply_design_from_form_data(self, client, tmp_path, monkeypatch):
+        """Test apply_design accepts form-encoded which parameter."""
+        product_id = "test_form_data"
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch('app.routes.printify_api.printify') as mock_printify:
+            mock_printify.upload_image_file.return_value = {"id": "img_form_333"}
+            mock_product = {
+                "id": product_id,
+                "print_areas": [{
+                    "placeholders": [{
+                        "position": "front",
+                        "images": [{"id": "img_form_333"}]
+                    }]
+                }]
+            }
+            mock_printify.get_product.return_value = mock_product
+            mock_printify.ensure_front_with_image.return_value = {}
+            mock_printify.update_product.return_value = mock_product
+
+            fake_file = BytesIO(b"\x89PNG\r\n\x1a\n")
+
+            response = client.post(
+                f'/api/printify/products/{product_id}/apply_design',
+                data={
+                    "which": "light",
+                    "file": (fake_file, "test.png")
+                }
+            )
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["image_id"] == "img_form_333"
 
 
 if __name__ == "__main__":

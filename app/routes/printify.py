@@ -175,11 +175,6 @@ def printify_edit(product_id):
                 for img in (ph.get("images") or []):
                     if isinstance(img, dict) and img.get("src"):
                         return img["src"]
-        # Fallback: any placeholder with src
-        for ph in placeholders:
-            for img in (ph.get("images") or []):
-                if isinstance(img, dict) and img.get("src"):
-                    return img["src"]
         return None
 
     black_front_src = None
@@ -220,11 +215,6 @@ def printify_edit(product_id):
                 for img in (ph.get("images") or []):
                     if isinstance(img, dict) and img.get("src"):
                         return img["src"]
-        # Fallback: any placeholder with an image
-        for ph in (pa.get("placeholders") or []):
-            for img in (ph.get("images") or []):
-                if isinstance(img, dict) and img.get("src"):
-                    return img["src"]
         return None
 
     # Colors actually present on this product (from enabled variants)
