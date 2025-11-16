@@ -60,7 +60,7 @@ case "$TEST_TYPE" in
         ;;
     coverage)
         echo -e "${YELLOW}Running unit and integration tests with coverage...${NC}"
-        pytest tests/unit tests/integration/test_api_routes_real.py tests/integration/test_printify_routes_real.py --cov=app --cov-report=term --cov-report=html --cov-report=xml
+        pytest tests/unit tests/integration/test_api_routes_real.py tests/integration/test_printify_routes_real.py tests/integration/test_shopify_api_routes_real.py --cov=app --cov-report=term --cov-report=html --cov-report=xml
         echo ""
         echo -e "${GREEN}Coverage report generated:${NC}"
         echo "  - Terminal: (shown above)"

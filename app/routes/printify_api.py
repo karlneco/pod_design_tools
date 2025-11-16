@@ -11,6 +11,7 @@ from ..extensions import store, printify_client as printify
 
 bp = Blueprint("printify_api", __name__)
 PRINTIFY_PRODUCTS_COLLECTION = "printify_products"
+ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
 
 def _to_bool(param):
@@ -21,6 +22,151 @@ def _to_bool(param):
     if isinstance(param, str):
         return param.strip().lower() in ("1", "true", "yes", "y", "on")
     return False
+
+
+# ========================================
+# Helper functions for api_printify_save
+# ========================================
+
+def _normalize_tags(raw_tags) -> list[str]:
+    """Normalize and deduplicate tags from various input formats."""
+    if isinstance(raw_tags, str):
+        raw_tags = [raw_tags]
+    
+    if not isinstance(raw_tags, list):
+        return []
+    
+    tags = []
+    seen = set()
+    for t in raw_tags:
+        s = str(t).strip()
+        if not s:
+            continue
+        key = s.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        tags.append(s)
+    
+    return tags[:40]  # Cap at reasonable number
+
+
+def _get_design_directories(product_id: str) -> list[Path]:
+    """Get candidate directories where design files may be stored."""
+    root = Path(current_app.root_path).resolve()
+    proj_root = root.parent
+    return [
+        proj_root / "data" / "designs" / product_id,
+        root / "data" / "designs" / product_id,
+        Path("data/designs") / product_id,
+    ]
+
+
+def _load_design_manifest(base_dir: Path) -> dict | None:
+    """Load manifest.json from a design directory."""
+    manifest_file = base_dir / "manifest.json"
+    if not manifest_file.exists():
+        return None
+    try:
+        return json.loads(manifest_file.read_text(encoding="utf-8"))
+    except Exception as e:
+        current_app.logger.warning("manifest.json unreadable at %s: %s", manifest_file, e)
+        return None
+
+
+def _find_design_from_manifest(product_id: str, which: str) -> tuple[Path, str] | None:
+    """Find design file path using manifest.json. Returns (path, original_filename)."""
+    for base_dir in _get_design_directories(product_id):
+        manifest = _load_design_manifest(base_dir)
+        if not manifest:
+            continue
+        
+        entry = manifest.get(which) or {}
+        filename = entry.get("file")
+        if not filename:
+            continue
+        
+        file_path = (base_dir / filename).resolve()
+        if file_path.exists() and file_path.suffix.lower() in ALLOWED_IMAGE_EXTS:
+            return file_path, filename
+    
+    return None
+
+
+def _upload_design_if_present(product_id: str, which: str) -> str | None:
+    """Find and upload a design file, returning the Printify image ID."""
+    design_info = _find_design_from_manifest(product_id, which)
+    if not design_info:
+        return None
+    
+    file_path, file_name = design_info
+    try:
+        result = printify.upload_image_file(file_path=str(file_path), file_name=file_name)
+        return result.get("id")
+    except Exception as e:
+        current_app.logger.error("Failed to upload %s design: %s", which, e)
+        return None
+
+
+def _extract_first_non_default_front_image(product: dict) -> str | None:
+    """Extract first non-default front image ID from product print areas."""
+    default_id = getattr(Config, "DEFAULT_FRONT_IMAGE_ID", None)
+    
+    for print_area in (product.get("print_areas") or []):
+        for placeholder in (print_area.get("placeholders") or []):
+            if (placeholder.get("position") or "").strip().lower() != "front":
+                continue
+            
+            for img in (placeholder.get("images") or []):
+                img_id = str(img.get("id") or "")
+                if img_id and (not default_id or img_id != str(default_id)):
+                    return img_id
+    
+    return None
+
+
+def _extract_variant_color(variant: dict) -> str | None:
+    """Extract color title from a variant."""
+    # Try options dict first
+    opts = variant.get("options")
+    if isinstance(opts, dict):
+        for key in ("color", "Color", "colour", "Colour"):
+            if opts.get(key):
+                return str(opts[key]).strip()
+    
+    # Try options list
+    elif isinstance(opts, list):
+        for opt in opts:
+            try:
+                name = (opt.get("name") or "").strip().lower()
+                if name in ("color", "colour"):
+                    value = opt.get("value") or opt.get("title")
+                    if value:
+                        return str(value).strip()
+            except AttributeError:
+                pass
+    
+    # Fallback: parse title like "Black / M"
+    title = variant.get("title") or ""
+    if " / " in title:
+        return title.split(" / ")[0].strip()
+    
+    return None
+
+
+def _coerce_int(value, default=0) -> int:
+    """Safely coerce a value to int."""
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _slim_images(images: list[dict]) -> list[dict]:
+    """Keep only essential image fields."""
+    return [{"id": img.get("id")} for img in images if img.get("id")]
 
 
 def _normalize_printify_for_cache(p: dict) -> dict:
@@ -512,6 +658,9 @@ def api_printify_save(product_id):
     except Exception as e:
         return jsonify({"error": f"Failed to load product: {e}"}), 400
 
+    # Initialize unassigned early so it's always in local scope (prevents UnboundLocalError)
+    unassigned: list[int] = []
+
     # 1) Upload local design files if present (robust path & verbose logging)
     ALLOWED_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
     log = current_app.logger or logging.getLogger(__name__)
@@ -656,7 +805,11 @@ def api_printify_save(product_id):
     def variant_ids_for(pills: list[dict]) -> list[int]:
         out = []
         for c in (pills or []):
-            t = str(c.get("title") or "").strip()
+            # Support either dict entries like {"title": "Black"} OR plain string titles
+            if isinstance(c, str):
+                t = c.strip()
+            else:
+                t = str((c or {}).get("title") or "").strip()
             if not t: continue
             out.extend(all_variants_by_color.get(t, []))
         # de-dup preserve order
@@ -745,6 +898,9 @@ def api_printify_save(product_id):
             }]
         })
 
+    # Ensure 'unassigned' exists even if have_any_image is False
+    # (unassigned already initialized above)
+
     have_any_image = bool(default_img_id or dark_img_id)
     if have_any_image:
         if single_mode:
@@ -795,7 +951,7 @@ def api_printify_save(product_id):
     include_print_areas = False
     if merged_areas:
         covered = _covered(merged_areas)
-        missing = [vid for vid in unassigned if vid not in covered]
+        missing = [vid for vid in (unassigned or []) if vid not in covered]
         if missing and (default_img_id or dark_img_id):
             # add a final FRONT-only area for missing variants (use whatever image we have)
             merged_areas.append({

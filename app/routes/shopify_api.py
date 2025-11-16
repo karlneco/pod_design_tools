@@ -24,6 +24,306 @@ def _normalize_product_tags(product: dict) -> dict:
     return product
 
 
+# ========================================
+# Helper functions for generate_mockups
+# ========================================
+
+def _normalize_str(s: str) -> str:
+    """Normalize string for color/title matching."""
+    return (s or "").strip().lower()
+
+
+def _find_printify_product_by_shopify_id(product_id: str) -> dict | None:
+    """Find Printify product associated with Shopify product ID."""
+    for item in store.list("printify_products"):
+        if str(item.get("shopify_product_id") or "") == str(product_id):
+            return item
+    return None
+
+
+def _extract_front_design_src(prod: dict) -> str | None:
+    """Extract front design image source from Printify product."""
+    # Try print areas first
+    for pa in (prod.get("print_areas") or []):
+        for ph in (pa.get("placeholders") or []):
+            if (ph.get("position") or "").lower() != "front":
+                continue
+            for img in (ph.get("images") or []):
+                candidate = img.get("src") or img.get("url")
+                if candidate:
+                    return candidate
+    
+    # Fallback to preview or images
+    src = prod.get("preview")
+    if src:
+        return src
+    
+    images = prod.get("images") or []
+    return images[0] if images else None
+
+
+def _resolve_design_path(src: str, product_id: str) -> str:
+    """Resolve design image to local path (download if remote URL)."""
+    if str(src).startswith("/designs/"):
+        # Local saved route
+        p = Path("." + str(src))
+        if not p.exists():
+            raise FileNotFoundError(f"Local design path not found: {p}")
+        return str(p)
+    
+    # Download remote URL
+    tmpdir = Path("data/tmp")
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    suffix = Path(src).suffix or ".png"
+    outtmp = tmpdir / f"shopify_{product_id}_design{suffix}"
+    
+    with httpx.Client(timeout=30) as client:
+        r = client.get(src)
+        r.raise_for_status()
+        outtmp.write_bytes(r.content)
+    
+    return str(outtmp)
+
+
+def _get_front_src_from_print_area(pa: dict) -> str | None:
+    """Extract front image source from a print area."""
+    # Prefer explicit "front" placeholder
+    for ph in (pa.get("placeholders") or []):
+        if str(ph.get("position", "")).lower() == "front":
+            for img in (ph.get("images") or []):
+                if isinstance(img, dict) and (img.get("src") or img.get("url")):
+                    return img.get("src") or img.get("url")
+    
+    # Fallback: any placeholder with an image
+    for ph in (pa.get("placeholders") or []):
+        for img in (ph.get("images") or []):
+            if isinstance(img, dict) and (img.get("src") or img.get("url")):
+                return img.get("src") or img.get("url")
+    
+    return None
+
+
+def _extract_color_from_variant(variant: dict) -> str | None:
+    """Extract color title from variant (option1, option2, options list, or title)."""
+    # Try option1/option2 first
+    if variant.get("option1"):
+        return variant.get("option1")
+    if variant.get("option2"):
+        return variant.get("option2")
+    
+    # Try options list
+    opts = variant.get("options")
+    if isinstance(opts, list):
+        for o in opts:
+            try:
+                name = (o.get("name") or "").strip().lower()
+                if name in ("color", "colour"):
+                    return o.get("value") or o.get("title")
+            except Exception:
+                continue
+    
+    # Fallback to parsing title
+    if variant.get("title"):
+        t = variant.get("title")
+        return t.split(" / ")[0] if " / " in t else t
+    
+    return None
+
+
+def _build_color_mappings(prod: dict) -> tuple[dict[int, str], dict[str, str]]:
+    """Build mappings: variant_id -> color_title and normalized_color -> design_src."""
+    variant_id_to_title: dict[int, str] = {}
+    color_to_src: dict[str, str] = {}
+    
+    # Map Printify variant IDs to color titles
+    for pv in (prod.get("variants") or []):
+        try:
+            pvid = int(pv.get("id"))
+            color = _extract_color_from_variant(pv)
+            if color:
+                variant_id_to_title[pvid] = str(color).strip()
+        except Exception:
+            continue
+    
+    # Map normalized colors to design sources from print areas
+    for pa in (prod.get("print_areas") or []):
+        pa_src = _get_front_src_from_print_area(pa)
+        if not pa_src:
+            continue
+        
+        for v in (pa.get("variant_ids") or []):
+            try:
+                v_int = int(v)
+                color_title = variant_id_to_title.get(v_int)
+                if color_title:
+                    color_to_src[_normalize_str(color_title)] = pa_src
+            except Exception:
+                continue
+    
+    return variant_id_to_title, color_to_src
+
+
+def _load_template_files(templates_dir: Path) -> list[str]:
+    """Load template files from directory."""
+    if not templates_dir.exists():
+        raise FileNotFoundError(f"Templates folder missing: {templates_dir}")
+    
+    templates = [
+        str(p) for p in sorted(templates_dir.iterdir())
+        if p.suffix.lower() in Config.ALLOWED_EXTS
+    ]
+    
+    if not templates:
+        raise ValueError("No template images found in templates directory")
+    
+    return templates
+
+
+def _load_colors_catalog(colors_file: Path) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Load colors.json catalog mapping template names to hex codes."""
+    template_hex_map: dict[str, str] = {}
+    hex_to_template_names: dict[str, list[str]] = {}
+    
+    try:
+        import json as _json
+        if colors_file.exists():
+            colors_data = _json.loads(colors_file.read_text(encoding="utf-8"))
+            for entry in (colors_data or []):
+                title = entry.get("Color") or entry.get("color")
+                hexv = entry.get("Hex") or entry.get("hex")
+                if not title or not hexv:
+                    continue
+                
+                norm_title = _normalize_str(str(title))
+                norm_hex = str(hexv).lstrip("#").upper()
+                template_hex_map[norm_title] = norm_hex
+                hex_to_template_names.setdefault(norm_hex, []).append(norm_title)
+    except Exception:
+        pass  # Non-fatal
+    
+    return template_hex_map, hex_to_template_names
+
+
+def _get_shopify_variants(product_id: str) -> list[dict]:
+    """Get Shopify product variants (from cache or API)."""
+    try:
+        shop_product = (
+            store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or
+            store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id)
+        )
+        if not shop_product:
+            shop_product = shopify.get_product(product_id)
+    except Exception:
+        current_app.logger.exception("Failed to load Shopify product")
+        shop_product = (
+            store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or
+            store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or
+            {}
+        )
+    
+    return shop_product.get("variants") or []
+
+
+def _filter_templates_by_variants(templates: list[str], variants: list[dict]) -> list[str]:
+    """Filter templates to only those matching enabled variant colors."""
+    # Build map of template stems
+    template_map: dict[str, str] = {}
+    for t in templates:
+        stem = Path(t).stem
+        template_map[_normalize_str(stem)] = t
+    
+    # Collect used color titles from enabled variants
+    used_titles: set[str] = set()
+    for var in variants:
+        try:
+            if var.get("is_enabled", True) is False:
+                continue
+            
+            color = _extract_color_from_variant(var)
+            if color:
+                used_titles.add(_normalize_str(color))
+        except Exception:
+            continue
+    
+    # Match templates to used colors
+    matched_templates = []
+    for norm_title in used_titles:
+        if norm_title in template_map:
+            matched_templates.append(template_map[norm_title])
+    
+    # Fallback to all templates if no matches
+    if not matched_templates:
+        current_app.logger.info("No template names matched Shopify variant colors; using all templates")
+        return templates.copy()
+    
+    return matched_templates
+
+
+def _download_design_to_tmp(src: str, product_id: str, stem: str) -> str:
+    """Download design source to temp directory. Returns empty string on failure."""
+    try:
+        if str(src).startswith("/designs/"):
+            p = Path("." + str(src))
+            return str(p) if p.exists() else ""
+        
+        tmpdir = Path("data/tmp")
+        tmpdir.mkdir(parents=True, exist_ok=True)
+        suffix = Path(src).suffix or ".png"
+        outtmp = tmpdir / f"shopify_{product_id}_{stem}_design{suffix}"
+        
+        with httpx.Client(timeout=30) as client:
+            r = client.get(src)
+            r.raise_for_status()
+            outtmp.write_bytes(r.content)
+        
+        return str(outtmp)
+    except Exception:
+        return ""
+
+
+def _find_design_for_template(
+    template_path: str,
+    color_to_src: dict[str, str],
+    template_hex_map: dict[str, str],
+    pa_bg_map: dict[str, str],
+    fallback_src: str | None = None
+) -> str | None:
+    """Find the appropriate design image source for a template."""
+    stem = Path(template_path).stem
+    norm_stem = _normalize_str(stem)
+    
+    # 1. Direct color match
+    design_src = color_to_src.get(norm_stem)
+    if design_src:
+        return design_src
+    
+    # 2. Hex color match via colors.json
+    tmpl_hex = template_hex_map.get(norm_stem)
+    if tmpl_hex and tmpl_hex in pa_bg_map:
+        return pa_bg_map.get(tmpl_hex)
+    
+    # 3. Fuzzy matching
+    try:
+        import difflib
+        candidates = list(color_to_src.keys())
+        if candidates:
+            matches = difflib.get_close_matches(norm_stem, candidates, n=1, cutoff=0.7)
+            if matches:
+                return color_to_src.get(matches[0])
+    except Exception:
+        pass
+    
+    # 4. Cross-match via hex codes
+    if template_hex_map and tmpl_hex:
+        for color_norm, src in color_to_src.items():
+            color_hex = template_hex_map.get(color_norm)
+            if color_hex and color_hex == tmpl_hex:
+                return src
+    
+    # 5. Fallback
+    return fallback_src
+
+
 # -----------------------------
 # Shopify: upload images + cache product list
 # -----------------------------
@@ -138,333 +438,108 @@ def api_shopify_generate_mockups(product_id):
     """Generate flat-lay mockups for a Shopify product.
 
     Flow:
-      - Find associated Printify product in cached printify_products (shopify_product_id)
-      - Load Printify product JSON and find a FRONT image src for the design
-      - Download the image (or use local /designs/... path) and composite it onto
-        templates in assets/mockups/g64k using generate_mockups_for_design
-      - Save outputs to assets/product_mockups/<product_id> and return their paths
+      - Find associated Printify product
+      - Extract design image source
+      - Match templates to product variants by color
+      - Generate mockups for each matched template
+      - Return paths and variant mappings
     """
-    # 1) Find printify product that links to this shopify product
-    pf = None
-    for item in store.list("printify_products"):
-        if str(item.get("shopify_product_id") or "") == str(product_id):
-            pf = item
-            break
+    # 1. Find associated Printify product
+    pf = _find_printify_product_by_shopify_id(product_id)
     if not pf:
         return jsonify({"error": "No associated Printify product found in cache"}), 404
 
-    printify_id = str(pf.get("id") or pf.get("_id") or pf.get("id"))
+    printify_id = str(pf.get("id") or pf.get("_id"))
+    
+    # 2. Fetch Printify product details
     try:
         prod = printify.get_product(printify_id)
     except Exception as e:
         current_app.logger.exception("Failed to fetch Printify product %s", printify_id)
         return jsonify({"error": f"Failed to fetch Printify product: {e}"}), 400
 
-    # 2) Find a front placeholder image src
-    src = None
-    for pa in (prod.get("print_areas") or []):
-        for ph in (pa.get("placeholders") or []):
-            if (ph.get("position") or "").lower() != "front":
-                continue
-            for img in (ph.get("images") or []):
-                candidate = img.get("src") or img.get("url")
-                if candidate:
-                    src = candidate
-                    break
-            if src:
-                break
-        if src:
-            break
-
-    # fallback to preview or images
-    if not src:
-        src = prod.get("preview") or (prod.get("images") or [None])[0]
-
+    # 3. Extract front design image source
+    src = _extract_front_design_src(prod)
     if not src:
         return jsonify({"error": "Could not find a front design image on Printify product"}), 404
 
-    # 3) Resolve local design path (if /designs/) or download remote URL to tmp
-    design_local_path = None
+    # 4. Resolve design to local path (download if needed)
     try:
-        if str(src).startswith("/designs/"):
-            # local saved route -> map to filesystem like other routes in the app
-            p = Path("." + str(src))
-            if not p.exists():
-                return jsonify({"error": f"Local design path not found: {p}"}), 404
-            design_local_path = str(p)
-        else:
-            # download
-            tmpdir = Path("data/tmp")
-            tmpdir.mkdir(parents=True, exist_ok=True)
-            suffix = Path(src).suffix or ".png"
-            outtmp = tmpdir / f"shopify_{product_id}_design{suffix}"
-            with httpx.Client(timeout=30) as client:
-                r = client.get(src)
-                r.raise_for_status()
-                outtmp.write_bytes(r.content)
-            design_local_path = str(outtmp)
+        design_local_path = _resolve_design_path(src, product_id)
     except Exception as e:
         current_app.logger.exception("Failed to obtain design image")
         return jsonify({"error": f"Failed to obtain design image: {e}"}), 400
 
-    # 4) Collect template files from assets/mockups/g64k
+    # 5. Load templates
     templates_dir = Config.ASSETS_DIR / "mockups" / "g64k"
-    if not templates_dir.exists():
-        return jsonify({"error": f"Templates folder missing: {templates_dir}"}), 500
-    templates = [str(p) for p in sorted(templates_dir.iterdir()) if p.suffix.lower() in Config.ALLOWED_EXTS]
-    if not templates:
-        return jsonify({"error": "No template images found in assets/mockups/g64k"}), 500
-
-    # --- Build variant -> front image src mapping from Printify print_areas ---
-    def _front_src_from_pa(pa: dict) -> str | None:
-        # Prefer explicit "front" placeholder
-        for ph in (pa.get("placeholders") or []):
-            if str(ph.get("position", "")).lower() == "front":
-                for img in (ph.get("images") or []):
-                    if isinstance(img, dict) and (img.get("src") or img.get("url")):
-                        return img.get("src") or img.get("url")
-        # Fallback: any placeholder with an image
-        for ph in (pa.get("placeholders") or []):
-            for img in (ph.get("images") or []):
-                if isinstance(img, dict) and (img.get("src") or img.get("url")):
-                    return img.get("src") or img.get("url")
-        return None
-
-    # Helper to normalize color/title strings for matching (defined early so other maps can use it)
-    def _norm(s: str) -> str:
-        return (s or "").strip().lower()
-
-    # Build mapping from Printify variant ID -> color title (from Printify product variants)
-    printify_variant_id_to_title: dict[int, str] = {}
-    for pv in (prod.get("variants") or []):
-        try:
-            pvid = int(pv.get("id"))
-        except Exception:
-            continue
-        # Try option1/option2, options list, then title fallback
-        p_ctitle = None
-        if pv.get("option1"):
-            p_ctitle = pv.get("option1")
-        elif pv.get("option2"):
-            p_ctitle = pv.get("option2")
-        else:
-            opts = pv.get("options")
-            if isinstance(opts, list):
-                for o in opts:
-                    try:
-                        name = (o.get("name") or "").strip().lower()
-                        if name in ("color", "colour"):
-                            p_ctitle = o.get("value") or o.get("title")
-                            break
-                    except Exception:
-                        continue
-            if not p_ctitle and pv.get("title"):
-                t = pv.get("title")
-                p_ctitle = t.split(" / ")[0] if " / " in t else t
-        if p_ctitle:
-            printify_variant_id_to_title[pvid] = str(p_ctitle).strip()
-
-    # Build color_title (normalized) -> print_area front-src mapping using Printify print_areas
-    color_title_to_pa_src: dict[str, str] = {}
-    for pa in (prod.get("print_areas") or []):
-        pa_src = _front_src_from_pa(pa)
-        if not pa_src:
-            continue
-        for v in (pa.get("variant_ids") or []):
-            try:
-                v_int = int(v)
-            except Exception:
-                continue
-            ptitle = printify_variant_id_to_title.get(v_int)
-            if ptitle:
-                color_title_to_pa_src[_norm(ptitle)] = pa_src
-
-    # map template stem normalized -> template full path
-    template_map: dict[str, str] = {}
-    for t in templates:
-        stem = Path(t).stem
-        template_map[_norm(stem)] = t
-
-    # Load color catalog (if present) to map template names -> hex
-    colors_file = templates_dir / "colors.json"
-    template_hex_map: dict[str, str] = {}
-    hex_to_template_names: dict[str, list[str]] = {}
     try:
-        import json as _json
-        if colors_file.exists():
-            colors_data = _json.loads(colors_file.read_text(encoding="utf-8"))
-            for entry in (colors_data or []):
-                title = (entry.get("Color") or entry.get("Color") or entry.get("color") or entry.get("Color"))
-                hexv = entry.get("Hex") or entry.get("Hex") or entry.get("hex") or entry.get("Hex")
-                if not title or not hexv:
-                    continue
-                norm_title = _norm(str(title))
-                norm_hex = str(hexv).lstrip("#").upper()
-                template_hex_map[norm_title] = norm_hex
-                hex_to_template_names.setdefault(norm_hex, []).append(norm_title)
-    except Exception:
-        # Non-fatal; if parsing fails we'll rely on variant->title mapping
-        template_hex_map = {}
-        hex_to_template_names = {}
-    # Keep a list of printify-normalized color titles to aid fuzzy matching
-    try:
-        import difflib as _difflib
-    except Exception:
-        _difflib = None
+        templates = _load_template_files(templates_dir)
+    except (FileNotFoundError, ValueError) as e:
+        return jsonify({"error": str(e)}), 500
 
-    # Build a map of print_area background hex -> src (if given)
+    # 6. Build color mappings from Printify product
+    _, color_to_src = _build_color_mappings(prod)
+
+    # 7. Load colors catalog
+    template_hex_map, _ = _load_colors_catalog(templates_dir / "colors.json")
+
+    # 8. Build background color map from print areas
     pa_bg_map: dict[str, str] = {}
     for pa in (prod.get("print_areas") or []):
         bg = pa.get("background")
-        pa_src = _front_src_from_pa(pa)
-        if not pa_src:
-            continue
-        if isinstance(bg, str) and bg:
+        pa_src = _get_front_src_from_print_area(pa)
+        if pa_src and isinstance(bg, str) and bg:
             norm_bg = str(bg).lstrip("#").upper()
             pa_bg_map.setdefault(norm_bg, pa_src)
 
-    # Determine colors actually in use (enabled variants only) and map variant -> color title
-    # Try to load Shopify product from cache, fall back to live fetch
-    try:
-        shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id)
-        if not shop_product:
-            shop_product = shopify.get_product(product_id)
-    except Exception:
-        current_app.logger.exception("Failed to load Shopify product for variant/color mapping; will use cache or empty list")
-        shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or {}
+    # 9. Get Shopify variants and filter templates
+    variants = _get_shopify_variants(product_id)
+    templates_to_generate = _filter_templates_by_variants(templates, variants)
 
-    variants = (shop_product.get("variants") or [])
-
+    # 10. Build variant -> color title mapping for final output
     variant_to_title: dict[int, str] = {}
-    used_titles: set[str] = set()
     for var in variants:
         try:
             if var.get("is_enabled", True) is False:
                 continue
             vid = int(var.get("id") or 0)
-            # Shopify variant color may be in option1/option2, in options list, or embedded in title like "Black / S"
-            ctitle = None
-            if var.get("option1"):
-                ctitle = var.get("option1")
-            elif var.get("option2"):
-                ctitle = var.get("option2")
-            else:
-                opts = var.get("options")
-                if isinstance(opts, list):
-                    for o in opts:
-                        try:
-                            name = (o.get("name") or "").strip().lower()
-                            if name in ("color", "colour"):
-                                ctitle = o.get("value") or o.get("title")
-                                break
-                        except Exception:
-                            continue
-                if not ctitle and var.get("title"):
-                    t = var.get("title")
-                    ctitle = t.split(" / ")[0] if " / " in t else t
-            if ctitle:
-                ctitle = str(ctitle).strip()
-                variant_to_title[vid] = ctitle
-                used_titles.add(_norm(ctitle))
+            color = _extract_color_from_variant(var)
+            if color:
+                variant_to_title[vid] = str(color).strip()
         except Exception:
             continue
 
-    # Pick templates whose normalized stem matches a used title
-    templates_to_generate = []
-    for norm_title in used_titles:
-        if norm_title in template_map:
-            templates_to_generate.append(template_map[norm_title])
-
-    # If we couldn't match any templates, fallback to generating for all templates (preserve previous behavior)
-    if not templates_to_generate:
-        current_app.logger.info("No template names matched Shopify variant colors; generating all templates")
-        templates_to_generate = templates.copy()
-
-    # 5) For each template, determine the correct design image (per-color if available) and generate mockup
+    # 11. Generate mockups for each template
     out_dir = Config.ASSETS_DIR / "product_mockups" / str(product_id)
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    def _download_to_tmp(src: str, stem: str) -> str:
-        """Download src to data/tmp and return local path (empty string on failure)."""
-        try:
-            if str(src).startswith("/designs/"):
-                p = Path("." + str(src))
-                if p.exists():
-                    return str(p)
-                return ""
-            tmpdir = Path("data/tmp")
-            tmpdir.mkdir(parents=True, exist_ok=True)
-            suffix = Path(src).suffix or ".png"
-            outtmp = tmpdir / f"shopify_{product_id}_{stem}_design{suffix}"
-            with httpx.Client(timeout=30) as client:
-                r = client.get(src)
-                r.raise_for_status()
-                outtmp.write_bytes(r.content)
-            return str(outtmp)
-        except Exception:
-            return ""
-
+    
     out_files = []
-    for t in templates_to_generate:
-        stem = Path(t).stem
-        norm_stem = _norm(stem)
-
-        # Prefer a per-color Printify print_area src (mapped by normalized color title)
-        design_src_for_template = color_title_to_pa_src.get(norm_stem)
-
-        # Next prefer print_area background color match using colors.json
-        if not design_src_for_template:
-            tmpl_hex = template_hex_map.get(_norm(stem))
-            if tmpl_hex and tmpl_hex in pa_bg_map:
-                design_src_for_template = pa_bg_map.get(tmpl_hex)
-
-        # Try fuzzy match between template name and Printify color titles
-        if not design_src_for_template and _difflib:
-            candidates = list(color_title_to_pa_src.keys())
-            if candidates:
-                matches = _difflib.get_close_matches(norm_stem, candidates, n=1, cutoff=0.7)
-                if matches:
-                    design_src_for_template = color_title_to_pa_src.get(matches[0])
-
-        # Cross-match via colors.json: if a Printify color maps to the same hex as the template, use its pa_src
-        if not design_src_for_template and template_hex_map:
-            tmpl_hex = template_hex_map.get(_norm(stem))
-            if tmpl_hex:
-                for ptitle_norm, pa_src in color_title_to_pa_src.items():
-                    p_hex = template_hex_map.get(ptitle_norm)
-                    if p_hex and p_hex == tmpl_hex:
-                        design_src_for_template = pa_src
-                        break
-
-        # Fallback to the generic product src we found earlier
-        if not design_src_for_template:
-            # previous single source resolution (from earlier in this function)
-            for pa in (prod.get("print_areas") or []):
-                # reuse same helper to try to find any front src
-                s = _front_src_from_pa(pa)
-                if s:
-                    design_src_for_template = s
-                    break
-
-        # Download/resolve local design image path for this template
+    for template_path in templates_to_generate:
+        stem = Path(template_path).stem
+        
+        # Find best design source for this template
+        design_src = _find_design_for_template(
+            template_path, color_to_src, template_hex_map, pa_bg_map,
+            fallback_src=src
+        )
+        
+        # Download/resolve design path
         template_design_local = None
-        if design_src_for_template:
-            template_design_local = _download_to_tmp(design_src_for_template, stem)
-
-        # Final fallback to global design_local_path (single preview we downloaded earlier)
+        if design_src:
+            template_design_local = _download_design_to_tmp(design_src, product_id, stem)
+        
         if not template_design_local:
             template_design_local = design_local_path
-
-        # If still no design available, skip this template
+        
         if not template_design_local:
-            current_app.logger.warning("No design image available for template %s; skipping", stem)
+            current_app.logger.warning("No design available for template %s; skipping", stem)
             continue
 
-        # Generate mockup for this single template
+        # Generate mockup
         try:
-            generated = generate_mockups_for_design(
+            generate_mockups_for_design(
                 design_png_path=template_design_local,
-                templates=[t],
+                templates=[template_path],
                 placements={},
                 out_dir=out_dir,
                 scale=1.0,
@@ -473,7 +548,7 @@ def api_shopify_generate_mockups(product_id):
             current_app.logger.exception("Mockup generation failed for template %s", stem)
             continue
 
-        # Rename output mockup_{stem}.png -> {stem}.png and collect
+        # Rename and collect output
         gen_path = out_dir / f"mockup_{stem}.png"
         final_name = out_dir / f"{stem}.png"
         try:
@@ -486,24 +561,22 @@ def api_shopify_generate_mockups(product_id):
             if final_name.exists():
                 out_files.append(final_name)
 
-    # 7) Produce relative paths for client preview (relative to project base)
+    # 12. Build output: relative paths and variant mappings
     rel_out = [str(p.relative_to(Config.BASE_DIR)) for p in sorted(out_files)]
-
-    # 8) Build mapping of variant IDs -> mockup paths for variants whose color matched one of the generated templates
-    variants_to_update: dict[int, str] = {}
-    # Create reverse map: normalized template stem -> relative output path
+    
     stem_to_relpath: dict[str, str] = {}
     for p in out_files:
-        stem = _norm(Path(p).stem)
+        stem = _normalize_str(Path(p).stem)
         try:
             stem_to_relpath[stem] = str(p.relative_to(Config.BASE_DIR))
         except Exception:
             stem_to_relpath[stem] = str(p)
 
+    variants_to_update: dict[int, str] = {}
     for vid, title in variant_to_title.items():
-        n = _norm(title)
-        if n in stem_to_relpath:
-            variants_to_update[vid] = stem_to_relpath[n]
+        norm_title = _normalize_str(title)
+        if norm_title in stem_to_relpath:
+            variants_to_update[vid] = stem_to_relpath[norm_title]
 
     return jsonify({"mockups": rel_out, "variants_to_update": variants_to_update})
 
