@@ -74,8 +74,9 @@ class TestShopifyClient:
     @respx.mock
     def test_get_product_success(self, shopify_client, sample_shopify_product):
         """Test getting a single product by ID."""
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/987654321.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/987654321.json"
         ).mock(return_value=httpx.Response(200, json=sample_shopify_product))
 
         result = shopify_client.get_product("987654321")
@@ -86,8 +87,9 @@ class TestShopifyClient:
     @respx.mock
     def test_get_product_not_found(self, shopify_client):
         """Test getting a product that doesn't exist."""
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/999999.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/999999.json"
         ).mock(return_value=httpx.Response(404, json={"errors": "Not Found"}))
 
         with pytest.raises(httpx.HTTPStatusError):
@@ -109,8 +111,9 @@ class TestShopifyClient:
             }
         }
 
-        respx.put(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123456.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123456.json"
         ).mock(return_value=httpx.Response(200, json=response_data))
 
         result = shopify_client.update_product("123456", update_payload)
@@ -123,8 +126,9 @@ class TestShopifyClient:
         """Test that update_product wraps payload in 'product' key."""
         update_payload = {"title": "New Title"}
 
-        respx.put(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123.json"
         ).mock(return_value=httpx.Response(200, json={"product": {"id": 123, "title": "New Title"}}))
 
         shopify_client.update_product("123", update_payload)
@@ -145,8 +149,9 @@ class TestShopifyClient:
             ]
         }
 
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products.json"
         ).mock(return_value=httpx.Response(200, json=products_response))
 
         result = shopify_client.list_all_products()
@@ -174,14 +179,16 @@ class TestShopifyClient:
         }
 
         # Mock first request
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products.json",
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products.json",
             params__contains={"status": "active"}
         ).mock(return_value=httpx.Response(200, json=page1_response, headers={"Link": page1_link}))
 
         # Mock second request with page_info
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products.json",
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products.json",
             params__contains={"page_info": "abc123"}
         ).mock(return_value=httpx.Response(200, json=page2_response))
 
@@ -194,8 +201,9 @@ class TestShopifyClient:
     @respx.mock
     def test_list_all_products_respects_limit(self, shopify_client):
         """Test that list_all_products respects the limit parameter."""
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products.json"
         ).mock(return_value=httpx.Response(200, json={"products": []}))
 
         shopify_client.list_all_products(limit=100)
@@ -207,8 +215,9 @@ class TestShopifyClient:
     @respx.mock
     def test_list_all_products_caps_limit_at_250(self, shopify_client):
         """Test that list_all_products caps limit at 250."""
-        respx.get(
-            "https://test-store.myshopify.com/admin/api/2024-10/products.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products.json"
         ).mock(return_value=httpx.Response(200, json={"products": []}))
 
         shopify_client.list_all_products(limit=500)
@@ -229,8 +238,9 @@ class TestShopifyClient:
             }
         }
 
-        respx.post(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123456/images.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123456/images.json"
         ).mock(return_value=httpx.Response(200, json=upload_response))
 
         result = shopify_client.upload_product_images("123456", [str(sample_design_image)])
@@ -241,8 +251,9 @@ class TestShopifyClient:
     @respx.mock
     def test_upload_product_images_converts_to_webp(self, shopify_client, sample_design_image):
         """Test that images are converted to WebP format."""
-        respx.post(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123456/images.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123456/images.json"
         ).mock(return_value=httpx.Response(200, json={"image": {"id": 1}}))
 
         shopify_client.upload_product_images("123456", [str(sample_design_image)])
@@ -271,8 +282,9 @@ class TestShopifyClient:
         img2_path = tmp_path / "test_design2.png"
         img2.save(img2_path, "PNG")
 
-        respx.post(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123456/images.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123456/images.json"
         ).mock(return_value=httpx.Response(200, json={"image": {"id": 1}}))
 
         result = shopify_client.upload_product_images(
@@ -290,8 +302,9 @@ class TestShopifyClient:
         fake_image = tmp_path / "fake.png"
         fake_image.write_bytes(b"not a real image")
 
-        respx.post(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123456/images.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123456/images.json"
         ).mock(return_value=httpx.Response(200, json={"image": {"id": 1}}))
 
         result = shopify_client.upload_product_images("123456", [str(fake_image)])
@@ -302,8 +315,9 @@ class TestShopifyClient:
     @respx.mock
     def test_upload_images_http_error(self, shopify_client, sample_design_image):
         """Test handling of HTTP errors during image upload."""
-        respx.post(
-            "https://test-store.myshopify.com/admin/api/2024-10/products/123456/images.json"
+        respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products/123456/images.json"
         ).mock(return_value=httpx.Response(422, json={"errors": "Invalid image"}))
 
         with pytest.raises(httpx.HTTPStatusError):
@@ -312,8 +326,9 @@ class TestShopifyClient:
     def test_list_all_products_filters_active_only(self, shopify_client):
         """Test that list_all_products filters for active products."""
         with respx.mock:
-            respx.get(
-                "https://test-store.myshopify.com/admin/api/2024-10/products.json"
+            respx.route(
+            host="test-store.myshopify.com",
+            path="/admin/api/2024-10/products.json"
             ).mock(return_value=httpx.Response(200, json={"products": []}))
 
             shopify_client.list_all_products()

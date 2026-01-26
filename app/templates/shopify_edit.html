@@ -171,7 +171,7 @@ genBtn?.addEventListener('click', async () => {
   genBtn.disabled = true;
   status.textContent = 'Generating mockups…';
   try {
-    const res = await fetch(`{{ url_for('shopify_api.api_shopify_generate_mockups', product_id='') }}/${encodeURIComponent(id)}`, { method: 'POST' });
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/generate_mockups`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed');
     window.location.href = previewUrl;
@@ -192,7 +192,7 @@ regenBtn?.addEventListener('click', async () => {
   regenBtn.disabled = true;
   status.textContent = 'Regenerating mockups…';
   try {
-    const res = await fetch(`{{ url_for('shopify_api.api_shopify_generate_mockups', product_id='') }}/${encodeURIComponent(id)}`, { method: 'POST' });
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/generate_mockups`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed');
     window.location.href = `/shopify/products/${encodeURIComponent(id)}/mockups`;

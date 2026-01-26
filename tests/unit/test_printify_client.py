@@ -31,8 +31,9 @@ class TestPrintifyClient:
             "total": 2
         }
 
-        respx.get(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products.json"
         ).mock(return_value=httpx.Response(200, json=mock_response))
 
         result = client.list_products(page=1, limit=10)
@@ -46,8 +47,9 @@ class TestPrintifyClient:
         """Test that list_products respects pagination limits."""
         client = PrintifyClient()
 
-        respx.get(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products.json"
         ).mock(return_value=httpx.Response(200, json={"data": []}))
 
         # Request with high limit should be capped at 50
@@ -62,8 +64,9 @@ class TestPrintifyClient:
         """Test getting a single product by ID."""
         client = PrintifyClient()
 
-        respx.get(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products/test_product_123.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products/test_product_123.json"
         ).mock(return_value=httpx.Response(200, json=sample_printify_product))
 
         result = client.get_product("test_product_123")
@@ -76,8 +79,9 @@ class TestPrintifyClient:
         """Test getting a product that doesn't exist."""
         client = PrintifyClient()
 
-        respx.get(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products/nonexistent.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products/nonexistent.json"
         ).mock(return_value=httpx.Response(404, json={"error": "Not found"}))
 
         with pytest.raises(httpx.HTTPStatusError):
@@ -99,8 +103,9 @@ class TestPrintifyClient:
 
         created_product = {**product_spec, "id": "new_prod_123"}
 
-        respx.post(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products.json"
         ).mock(return_value=httpx.Response(200, json=created_product))
 
         result = client.create_product(product_spec)
@@ -123,8 +128,9 @@ class TestPrintifyClient:
 
         updated_product = {**update_spec, "id": "prod_123"}
 
-        respx.put(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products/prod_123.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products/prod_123.json"
         ).mock(return_value=httpx.Response(200, json=updated_product))
 
         result = client.update_product("prod_123", update_spec)
@@ -138,8 +144,9 @@ class TestPrintifyClient:
 
         publish_response = {"id": "prod_123", "status": "published"}
 
-        respx.post(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products/prod_123/publish.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products/prod_123/publish.json"
         ).mock(return_value=httpx.Response(200, json=publish_response))
 
         result = client.publish_to_shopify("prod_123")
@@ -153,8 +160,9 @@ class TestPrintifyClient:
 
         publish_details = {"title": True, "images": False}
 
-        respx.post(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products/prod_123/publish.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products/prod_123/publish.json"
         ).mock(return_value=httpx.Response(200, json={"status": "ok"}))
 
         client.publish_to_shopify("prod_123", publish_details)
@@ -180,8 +188,9 @@ class TestPrintifyClient:
             "upload_time": "2024-01-01 12:00:00"
         }
 
-        respx.post(
-            f"{PRINTIFY_API_BASE}/uploads/images.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/uploads/images.json"
         ).mock(return_value=httpx.Response(200, json=upload_response))
 
         result = client.upload_image_by_url(
@@ -202,8 +211,9 @@ class TestPrintifyClient:
             "file_name": "test_design.png"
         }
 
-        respx.post(
-            f"{PRINTIFY_API_BASE}/uploads/images.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/uploads/images.json"
         ).mock(return_value=httpx.Response(200, json=upload_response))
 
         result = client.upload_image_file(file_path=str(sample_design_image))
@@ -241,8 +251,9 @@ class TestPrintifyClient:
             ]
         }
 
-        respx.get(
-            f"{PRINTIFY_API_BASE}/catalog/blueprints/3/print_providers/5/variants.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/catalog/blueprints/3/print_providers/5/variants.json"
         ).mock(return_value=httpx.Response(200, json=variants_response))
 
         result = client.get_blueprint_provider_variants(
@@ -263,8 +274,9 @@ class TestPrintifyClient:
             {"id": 10, "title": "Provider B"}
         ]
 
-        respx.get(
-            f"{PRINTIFY_API_BASE}/catalog/blueprints/3/print_providers.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/catalog/blueprints/3/print_providers.json"
         ).mock(return_value=httpx.Response(200, json=providers_response))
 
         result = client.list_blueprint_providers(blueprint_id=3)
@@ -301,13 +313,15 @@ class TestPrintifyClient:
         client = PrintifyClient()
 
         # Mock getting the template product
-        respx.get(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products/template_123.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products/template_123.json"
         ).mock(return_value=httpx.Response(200, json=sample_printify_product))
 
         # Mock creating the duplicate
-        respx.post(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products.json"
         ).mock(return_value=httpx.Response(200, json={**sample_printify_product, "id": "duplicate_123"}))
 
         result = client.duplicate_product(
@@ -324,8 +338,9 @@ class TestPrintifyClient:
 
         error_response = {"error": "Invalid product spec", "details": "Missing required field"}
 
-        respx.post(
-            f"{PRINTIFY_API_BASE}/shops/test_shop_123/products.json"
+        respx.route(
+            host="api.printify.com",
+            path="/v1/shops/test_shop_123/products.json"
         ).mock(return_value=httpx.Response(400, json=error_response))
 
         with pytest.raises(httpx.HTTPStatusError) as exc_info:

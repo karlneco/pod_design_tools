@@ -830,38 +830,27 @@
       saveBtn.addEventListener('click', save);
     }
 
-// --- Shared helper: ensure current preview is in Printify and return a usable URL (src) ---
-async function ensureUploaded(side, imgEl, fileInput) {
+// --- Gather image reference for AI (no Printify upload) ---
+async function gatherImageForAI(side, imgEl, fileInput) {
   const pid = PRODUCT_ID;
 
-  // If user picked a file now -> upload & place
+  // If user picked a file -> convert to data URL
   if (fileInput && fileInput.files && fileInput.files[0]) {
-    const fd = new FormData();
-    fd.append('which', side);
-    fd.append('file', fileInput.files[0]);
-    const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
-      method: 'POST', body: fd
-    });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || 'Upload failed');
-    return j.src || null;
+    try {
+      return await fileToJpegDataURL(fileInput.files[0], 0.9);
+    } catch (e) {
+      console.warn('Failed to convert file to data URL:', e);
+      return null;
+    }
   }
 
-  // If a saved local path (/designs/<id>/<which>.*) is shown -> request use_saved
+  // If a saved local path (/designs/<id>/<which>.*) is shown -> use it directly
   const src = imgEl && imgEl.src ? imgEl.src : '';
   if (src.startsWith('/designs/')) {
-    const fd = new FormData();
-    fd.append('which', side);
-    fd.append('use_saved', '1');
-    const r = await fetch(`/api/printify/products/${encodeURIComponent(pid)}/apply_design`, {
-      method: 'POST', body: fd
-    });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || 'Upload failed');
-    return j.src || null;
+    return src;
   }
 
-  // If already a Printify URL and not the default logo -> just use it
+  // If already a Printify URL and not the default logo -> use it
   if (/^https?:\/\//.test(src) && !src.includes('68faffc792143382282f3002')) {
     return src;
   }
@@ -883,11 +872,11 @@ async function runGenerate(overridePrompt = null) {
 
   out.textContent = 'Preparing images…';
 
-  const lightSrc = await ensureUploaded('light',
+  const lightSrc = await gatherImageForAI('light',
     document.getElementById('lightPreview'),
     document.getElementById('lightFile')
   );
-  const darkSrc = single ? null : await ensureUploaded('dark',
+  const darkSrc = single ? null : await gatherImageForAI('dark',
     document.getElementById('darkPreview'),
     document.getElementById('darkFile')
   );

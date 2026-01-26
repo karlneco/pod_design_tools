@@ -103,19 +103,19 @@ def suggest_colors(design_title: str, collections, notes: str):
     prompt = (
         f"Design: {design_title}\nCollections: {collections}\nNotes: {notes}\n" + COLORS_USER_PROMPT
     )
-    content = _chat([
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
-    ])
-    # Try to parse as JSON list
     try:
+        content = _chat([
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ])
+        # Try to parse as JSON list
         start = content.find("[")
         end = content.rfind("]") + 1
         if start != -1 and end != -1:
             return json.loads(content[start:end])
     except Exception:
         pass
-    # Loose parse fallback
+    # Fallback on API error or parse failure
     return [
         {"name": "Black", "hex": "#000000", "why": "High contrast for bright graphics and white text."},
         {"name": "White", "hex": "#FFFFFF", "why": "Versatile, clean base for colorful designs."},
