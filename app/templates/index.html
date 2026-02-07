@@ -63,7 +63,8 @@ async function fetchDesigns(){
         <p><b>Tags:</b> ${(d.tags||[]).join(', ')}</p>
         <button onclick="runMeta('${d.slug}')">AI: Metadata</button>
         <button onclick="runColors('${d.slug}')">AI: Colors</button>
-        <button onclick="genMockups('${d.slug}')">Generate Mockups</button>
+        <button onclick="genMockups('${d.slug}', this)">Generate Mockups</button>
+        <a class="button" href="/designs/${encodeURIComponent(d.slug)}/mockup-editor">Edit Mockup Placement</a>
       </article>
       <article>
         <h5>Generated</h5>
@@ -86,14 +87,26 @@ async function runColors(slug){
   await fetch(`/api/designs/${slug}/ai/colors`, {method:'POST'});
   fetchDesigns();
 }
-async function genMockups(slug){
+async function genMockups(slug, btn){
+  const original = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generating…';
+  }
   const config = {
     templates: ['assets/mockups/flatlay_white_tee.png'],
     placements: { center: { x: 900, y: 1100, max_w: 2100, max_h: 2400 } },
     scale: 1.0
   };
-  await fetch(`/api/designs/${slug}/mockups`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(config)});
-  fetchDesigns();
+  try {
+    await fetch(`/api/designs/${slug}/mockups`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(config)});
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = original || 'Generate Mockups';
+    }
+    fetchDesigns();
+  }
 }
 
 document.getElementById('createDesignForm').addEventListener('submit', async (e)=>{

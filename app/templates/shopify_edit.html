@@ -61,6 +61,10 @@
       <label>
         Description (HTML)
         <textarea id="description">{{ p.description | safe }}</textarea>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <button type="button" id="aiDescBtn" class="secondary">Generate AI Description</button>
+          <small id="aiDescStatus" class="muted"></small>
+        </div>
       </label>
 
       <label>
@@ -76,7 +80,9 @@
       <div class="actions">
         <div>
           <button type="button" id="saveBtn">Save Changes</button>
+          <button type="button" id="updateMockupsBtn" class="secondary" style="margin-left:.5rem;">Update mockups</button>
           <small id="saveStatus" class="muted"></small>
+          <small id="updateMockupsStatus" class="muted" style="display:block;"></small>
         </div>
         <button type="button" id="refreshBtn" class="secondary">Update from Shopify</button>
       </div>
@@ -104,6 +110,8 @@
 const saveBtn = document.getElementById('saveBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 const genBtn = document.getElementById('genMockups');
+const aiDescBtn = document.getElementById('aiDescBtn');
+const updateMockupsBtn = document.getElementById('updateMockupsBtn');
 
 saveBtn.addEventListener('click', async () => {
   const id = document.getElementById('productId').value;
@@ -134,6 +142,73 @@ saveBtn.addEventListener('click', async () => {
   } finally {
     saveBtn.disabled = false;
     setTimeout(()=> saveStatus.textContent='', 1500);
+  }
+});
+
+updateMockupsBtn?.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  const status = document.getElementById('updateMockupsStatus');
+  updateMockupsBtn.disabled = true;
+  status.textContent = 'Starting…';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/update_mockups`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    const poll = async () => {
+      const pr = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/update_mockups_progress`);
+      const p = await pr.json();
+      if (p.error) {
+        status.textContent = `Error: ${p.error}`;
+        updateMockupsBtn.disabled = false;
+        return;
+      }
+      const total = p.total || 0;
+      const done = p.completed || 0;
+      const phase = p.phase || 'working';
+      status.textContent = total ? `${phase}: ${done}/${total}` : phase;
+      if (p.done) {
+        status.textContent = p.error ? `Error: ${p.error}` : 'Update complete.';
+        updateMockupsBtn.disabled = false;
+        setTimeout(() => { status.textContent = ''; }, 3000);
+        return;
+      }
+      setTimeout(poll, 1000);
+    };
+    poll();
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    updateMockupsBtn.disabled = false;
+  } finally {
+    if (status.textContent.startsWith('Error')) {
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+  }
+});
+
+aiDescBtn?.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  const title = document.getElementById('title').value.trim();
+  const tags = document.getElementById('tags').value.split(',')
+    .map(t => t.trim()).filter(Boolean);
+  const status = document.getElementById('aiDescStatus');
+  aiDescBtn.disabled = true;
+  status.textContent = 'Generating…';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/ai/description`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, tags }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    document.getElementById('description').value = data.description || '';
+    status.textContent = 'Ready.';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    aiDescBtn.disabled = false;
+    setTimeout(() => { status.textContent = ''; }, 2500);
   }
 });
 

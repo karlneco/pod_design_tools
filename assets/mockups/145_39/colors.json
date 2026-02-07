@@ -1,0 +1,513 @@
+{
+  "blueprint_id": 145,
+  "print_provider_id": 39,
+  "option_name": "Colors",
+  "values": [
+    {
+      "id": 521,
+      "title": "White",
+      "hex": "#ffffff",
+      "hexes": [
+        "#ffffff"
+      ]
+    },
+    {
+      "id": 525,
+      "title": "Heather Orange",
+      "hex": "#FF8B4A",
+      "hexes": [
+        "#FF8B4A"
+      ]
+    },
+    {
+      "id": 387,
+      "title": "Coral Silk",
+      "hex": "#e67376",
+      "hexes": [
+        "#e67376"
+      ]
+    },
+    {
+      "id": 418,
+      "title": "Black",
+      "hex": "#000000",
+      "hexes": [
+        "#000000"
+      ]
+    },
+    {
+      "id": 421,
+      "title": "Sand",
+      "hex": "#DCD2BE",
+      "hexes": [
+        "#DCD2BE"
+      ]
+    },
+    {
+      "id": 437,
+      "title": "Ice Grey",
+      "hex": "#D7D6D3",
+      "hexes": [
+        "#D7D6D3"
+      ]
+    },
+    {
+      "id": 358,
+      "title": "Sport Grey",
+      "hex": "#CACACA",
+      "hexes": [
+        "#CACACA"
+      ]
+    },
+    {
+      "id": 438,
+      "title": "Gold",
+      "hex": "#ffb81c",
+      "hexes": [
+        "#ffb81c"
+      ]
+    },
+    {
+      "id": 420,
+      "title": "Orange",
+      "hex": "#EA5F22",
+      "hexes": [
+        "#EA5F22"
+      ]
+    },
+    {
+      "id": 395,
+      "title": "Maroon",
+      "hex": "#642838",
+      "hexes": [
+        "#642838"
+      ]
+    },
+    {
+      "id": 362,
+      "title": "Dark Chocolate",
+      "hex": "#31221D",
+      "hexes": [
+        "#31221D"
+      ]
+    },
+    {
+      "id": 552,
+      "title": "Natural",
+      "hex": "#FFF6E3",
+      "hexes": [
+        "#FFF6E3"
+      ]
+    },
+    {
+      "id": 386,
+      "title": "Cornsilk",
+      "hex": "#F7EF8F",
+      "hexes": [
+        "#F7EF8F"
+      ]
+    },
+    {
+      "id": 370,
+      "title": "Pistachio",
+      "hex": "#D3D590",
+      "hexes": [
+        "#D3D590"
+      ]
+    },
+    {
+      "id": 359,
+      "title": "Daisy",
+      "hex": "#fed141",
+      "hexes": [
+        "#fed141"
+      ]
+    },
+    {
+      "id": 509,
+      "title": "Heather Military Green",
+      "hex": "#828067",
+      "hexes": [
+        "#828067"
+      ]
+    },
+    {
+      "id": 364,
+      "title": "Military Green",
+      "hex": "#62664C",
+      "hexes": [
+        "#62664C"
+      ]
+    },
+    {
+      "id": 4748,
+      "title": "Sage",
+      "hex": "#a4b09e",
+      "hexes": [
+        "#a4b09e"
+      ]
+    },
+    {
+      "id": 434,
+      "title": "Lime",
+      "hex": "#9EC46C",
+      "hexes": [
+        "#9EC46C"
+      ]
+    },
+    {
+      "id": 553,
+      "title": "Kiwi",
+      "hex": "#8FA749",
+      "hexes": [
+        "#8FA749"
+      ]
+    },
+    {
+      "id": 389,
+      "title": "Mint Green",
+      "hex": "#b1e0c0",
+      "hexes": [
+        "#b1e0c0"
+      ]
+    },
+    {
+      "id": 375,
+      "title": "Antique Heliconia",
+      "hex": "#B92972",
+      "hexes": [
+        "#B92972"
+      ]
+    },
+    {
+      "id": 416,
+      "title": "Forest Green",
+      "hex": "#223b26",
+      "hexes": [
+        "#223b26"
+      ]
+    },
+    {
+      "id": 407,
+      "title": "Graphite Heather",
+      "hex": "#797C7E",
+      "hexes": [
+        "#797C7E"
+      ]
+    },
+    {
+      "id": 369,
+      "title": "Irish Green",
+      "hex": "#279436",
+      "hexes": [
+        "#279436"
+      ]
+    },
+    {
+      "id": 435,
+      "title": "Kelly Green",
+      "hex": "#009660",
+      "hexes": [
+        "#009660"
+      ]
+    },
+    {
+      "id": 527,
+      "title": "Heather Irish Green",
+      "hex": "#6DEDA5",
+      "hexes": [
+        "#6DEDA5"
+      ]
+    },
+    {
+      "id": 4744,
+      "title": "Heather Galapagos Blue",
+      "hex": "#509aa0",
+      "hexes": [
+        "#509aa0"
+      ]
+    },
+    {
+      "id": 519,
+      "title": "Heather Sapphire",
+      "hex": "#59a1ce",
+      "hexes": [
+        "#59a1ce"
+      ]
+    },
+    {
+      "id": 367,
+      "title": "Dark Heather",
+      "hex": "#454545",
+      "hexes": [
+        "#454545"
+      ]
+    },
+    {
+      "id": 376,
+      "title": "Tropical Blue",
+      "hex": "#0097A9",
+      "hexes": [
+        "#0097A9"
+      ]
+    },
+    {
+      "id": 415,
+      "title": "Jade Dome",
+      "hex": "#19998A",
+      "hexes": [
+        "#19998A"
+      ]
+    },
+    {
+      "id": 551,
+      "title": "Sky",
+      "hex": "#8BCDEA",
+      "hexes": [
+        "#8BCDEA"
+      ]
+    },
+    {
+      "id": 392,
+      "title": "Light Blue",
+      "hex": "#d6e6f7",
+      "hexes": [
+        "#d6e6f7"
+      ]
+    },
+    {
+      "id": 368,
+      "title": "Carolina Blue",
+      "hex": "#7BA4DB",
+      "hexes": [
+        "#7BA4DB"
+      ]
+    },
+    {
+      "id": 393,
+      "title": "Iris",
+      "hex": "#6C84BB",
+      "hexes": [
+        "#6C84BB"
+      ]
+    },
+    {
+      "id": 514,
+      "title": "Heather Royal",
+      "hex": "#7C8CD9",
+      "hexes": [
+        "#7C8CD9"
+      ]
+    },
+    {
+      "id": 431,
+      "title": "Stone Blue",
+      "hex": "#7F909C",
+      "hexes": [
+        "#7F909C"
+      ]
+    },
+    {
+      "id": 549,
+      "title": "Heather Indigo",
+      "hex": "#6a798e",
+      "hexes": [
+        "#6a798e"
+      ]
+    },
+    {
+      "id": 397,
+      "title": "Indigo Blue",
+      "hex": "#476579",
+      "hexes": [
+        "#476579"
+      ]
+    },
+    {
+      "id": 391,
+      "title": "Antique Sapphire",
+      "hex": "#0082AE",
+      "hexes": [
+        "#0082AE"
+      ]
+    },
+    {
+      "id": 436,
+      "title": "Sapphire",
+      "hex": "#0080b5",
+      "hexes": [
+        "#0080b5"
+      ]
+    },
+    {
+      "id": 424,
+      "title": "Charcoal",
+      "hex": "#585559",
+      "hexes": [
+        "#585559"
+      ]
+    },
+    {
+      "id": 425,
+      "title": "Royal",
+      "hex": "#084f97",
+      "hexes": [
+        "#084f97"
+      ]
+    },
+    {
+      "id": 388,
+      "title": "Metro Blue",
+      "hex": "#424A7E",
+      "hexes": [
+        "#424A7E"
+      ]
+    },
+    {
+      "id": 4708,
+      "title": "Dark Heather Grey",
+      "hex": "#3a3d42",
+      "hexes": [
+        "#3a3d42"
+      ]
+    },
+    {
+      "id": 511,
+      "title": "Navy",
+      "hex": "#1a2237",
+      "hexes": [
+        "#1a2237"
+      ]
+    },
+    {
+      "id": 550,
+      "title": "Heather Navy",
+      "hex": "#424753",
+      "hexes": [
+        "#424753"
+      ]
+    },
+    {
+      "id": 510,
+      "title": "Heather Purple",
+      "hex": "#6A4398",
+      "hexes": [
+        "#6A4398"
+      ]
+    },
+    {
+      "id": 398,
+      "title": "Purple",
+      "hex": "#3C214E",
+      "hexes": [
+        "#3C214E"
+      ]
+    },
+    {
+      "id": 4025,
+      "title": "Heather Radiant Orchid",
+      "hex": "#D58EBB",
+      "hexes": [
+        "#D58EBB"
+      ]
+    },
+    {
+      "id": 4713,
+      "title": "Paragon",
+      "hex": "#948794",
+      "hexes": [
+        "#948794"
+      ]
+    },
+    {
+      "id": 433,
+      "title": "Light Pink",
+      "hex": "#FEE0EB",
+      "hexes": [
+        "#FEE0EB"
+      ]
+    },
+    {
+      "id": 4745,
+      "title": "Heather Heliconia",
+      "hex": "#fa74a6",
+      "hexes": [
+        "#fa74a6"
+      ]
+    },
+    {
+      "id": 4743,
+      "title": "Heather Berry",
+      "hex": "#e775bf",
+      "hexes": [
+        "#e775bf"
+      ]
+    },
+    {
+      "id": 513,
+      "title": "Azalea",
+      "hex": "#EF8FBC",
+      "hexes": [
+        "#EF8FBC"
+      ]
+    },
+    {
+      "id": 4746,
+      "title": "Heather Maroon",
+      "hex": "#743a4c",
+      "hexes": [
+        "#743a4c"
+      ]
+    },
+    {
+      "id": 508,
+      "title": "Heather Red",
+      "hex": "#E3525F",
+      "hexes": [
+        "#E3525F"
+      ]
+    },
+    {
+      "id": 423,
+      "title": "Red",
+      "hex": "#C62A32",
+      "hexes": [
+        "#C62A32"
+      ]
+    },
+    {
+      "id": 373,
+      "title": "Antique Cherry Red",
+      "hex": "#A82235",
+      "hexes": [
+        "#A82235"
+      ]
+    },
+    {
+      "id": 529,
+      "title": "Cherry Red",
+      "hex": "#B41A29",
+      "hexes": [
+        "#B41A29"
+      ]
+    },
+    {
+      "id": 548,
+      "title": "Heather Cardinal",
+      "hex": "#B54557",
+      "hexes": [
+        "#B54557"
+      ]
+    },
+    {
+      "id": 430,
+      "title": "Cardinal Red",
+      "hex": "#911a30",
+      "hexes": [
+        "#911a30"
+      ]
+    }
+  ],
+  "generated_from_product_id": "68093c1cb3f43a749b01d7bb",
+  "generated_at": "2025-10-24T06:24:50.823461+00:00"
+}

@@ -44,6 +44,20 @@ COLORS_USER_PROMPT = (
     "Return an array of objects with fields: name, hex (approx), why."
 )
 
+DESCRIPTION_USER_PROMPT = (
+    "Write a short Shopify product description in HTML that follows this exact format:\n"
+    "<h2>Title - Streetwear Tee Front Print</h2>\n"
+    "<p class=\"p4\">One paragraph, 2–3 sentences. Include one emphasized phrase wrapped as "
+    "<span class=\"s2\"><b>...</b></span>. Keep it travel-forward and evocative. "
+    "Do NOT describe the graphic or the illustration itself. Focus on mood, place, and vibe.\n\n"
+    "End the paragraph with exactly 3 emojis that fit the mood.\n"
+    "Use plain ASCII punctuation (avoid smart quotes or en-dashes).\n\n"
+    "Product context:\n"
+    "Title hint: {title_hint}\n"
+    "Tags: {tags}\n"
+    "Notes: {notes}\n"
+)
+
 def _chat(messages):
     body = {
         "model": MODEL,
@@ -120,3 +134,21 @@ def suggest_colors(design_title: str, collections, notes: str):
         {"name": "Black", "hex": "#000000", "why": "High contrast for bright graphics and white text."},
         {"name": "White", "hex": "#FFFFFF", "why": "Versatile, clean base for colorful designs."},
     ]
+
+
+def suggest_description(title_hint: str, tags, notes: str):
+    prompt = DESCRIPTION_USER_PROMPT.format(
+        title_hint=title_hint,
+        tags=tags,
+        notes=notes or "",
+    )
+    content = _chat([
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ])
+    content = content.strip()
+    if content.startswith("```"):
+        lines = [l for l in content.splitlines() if not l.strip().startswith("```")]
+        content = "\n".join(lines).strip()
+    content = content.replace("–", "-").replace("—", "-").replace("“", "\"").replace("”", "\"").replace("’", "'")
+    return content

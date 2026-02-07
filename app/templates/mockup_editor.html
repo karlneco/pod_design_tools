@@ -1,0 +1,314 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mockup Placement Editor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    :root {
+      --editor-bg: #f4f2ee;
+      --card-bg: var(--pico-card-background-color);
+      --accent: #2f5d62;
+      --accent-2: #f4b860;
+    }
+    body { background: var(--pico-background-color); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1.25rem; }
+    .stage-wrap { background: var(--card-bg); border-radius: 16px; padding: 1rem; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .stage { position: relative; width: 100%; background: var(--editor-bg); border-radius: 12px; overflow: hidden; }
+    .stage img { display: block; width: 100%; height: auto; }
+    .overlay { position: absolute; left: 0; top: 0; transform-origin: center center; pointer-events: none; }
+    .overlay img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .controls { background: var(--card-bg); border-radius: 16px; padding: 1rem; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .controls h3 { margin-bottom: 0.25rem; }
+    .rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .rows button { width: 100%; }
+    .row-span { grid-column: span 3; }
+    .stat { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.85rem; }
+    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .toolbar button.secondary { border-color: var(--accent); color: var(--accent); }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --editor-bg: #1d1f21;
+        --accent: #7fb2b6;
+        --accent-2: #f4b860;
+      }
+    }
+  </style>
+</head>
+<body class="container">
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/shopify">Shopify Products</a>
+    <a href="/printify">Printify Products</a>
+    {% if product_id %}
+      <a href="/shopify/products/{{ product_id }}/edit">Back to Product</a>
+    {% endif %}
+  </nav>
+
+  <h2>Mockup Placement Editor</h2>
+  <p class="stat">Design: <strong id="designSlug">{{ slug }}</strong></p>
+
+  <div class="layout">
+    <div class="stage-wrap">
+      <div id="stage" class="stage">
+        <img id="templateImg" src="" alt="Mockup template" />
+        <div id="overlay" class="overlay" style="width:100px;height:100px;">
+          <img id="designImg" src="" alt="Design overlay" />
+        </div>
+      </div>
+    </div>
+
+    <aside class="controls">
+      <h3>Position</h3>
+      <div class="rows">
+        <button data-dx="0" data-dy="-1">Up</button>
+        <button data-dx="-1" data-dy="0">Left</button>
+        <button data-dx="1" data-dy="0">Right</button>
+        <button data-dx="0" data-dy="1">Down</button>
+        <button class="secondary" data-step="5">Step x5</button>
+        <button class="secondary" data-step="10">Step x10</button>
+      </div>
+
+      <h3>Scale</h3>
+      <div class="rows">
+        <button data-scale="-0.01">-1%</button>
+        <button data-scale="0.01">+1%</button>
+        <button data-scale="0.05">+5%</button>
+        <button data-scale="-0.05">-5%</button>
+        <button data-fit="contain" class="secondary row-span">Fit to max box</button>
+      </div>
+
+      <h3>Max Box</h3>
+      <div class="rows">
+        <button data-box="max_w" data-delta="-10">W -10</button>
+        <button data-box="max_w" data-delta="10">W +10</button>
+        <button data-box="max_h" data-delta="-10">H -10</button>
+        <button data-box="max_h" data-delta="10">H +10</button>
+      </div>
+
+      <h3>Actions</h3>
+      <div class="toolbar">
+        <button id="saveBtn" class="contrast">Save Placement</button>
+        <button id="resetBtn" class="secondary">Reset</button>
+        <button id="regenBtn">Generate Mockup</button>
+      </div>
+      <div id="mockupStatus" class="stat"></div>
+
+      <h3>Mockup Tee</h3>
+      <div class="toolbar">
+        <button id="teeWhite" class="secondary">White Tee</button>
+        <button id="teeBlack" class="secondary">Black Tee</button>
+      </div>
+
+      <p class="stat" id="statText"></p>
+    </aside>
+  </div>
+
+<script>
+const slug = "{{ slug }}";
+const templateImg = document.getElementById('templateImg');
+const designImg = document.getElementById('designImg');
+const overlay = document.getElementById('overlay');
+const stage = document.getElementById('stage');
+const statText = document.getElementById('statText');
+
+let state = {
+  template: '',
+  placements: { center: { x: 900, y: 1100, max_w: 2100, max_h: 2400 } },
+  scale: 1.0,
+};
+let designNatural = { w: 0, h: 0 };
+let templateNatural = { w: 0, h: 0 };
+let stepSize = 1;
+
+function ratio() {
+  if (!templateNatural.w || !stage.clientWidth) return 1;
+  return stage.clientWidth / templateNatural.w;
+}
+
+function renderOverlay() {
+  const place = state.placements.center;
+  const stageRatio = ratio();
+  const maxW = place.max_w * state.scale;
+  const maxH = place.max_h * state.scale;
+  const dW = designNatural.w || 1;
+  const dH = designNatural.h || 1;
+  const fit = Math.min(maxW / dW, maxH / dH);
+  const dispW = dW * fit * stageRatio;
+  const dispH = dH * fit * stageRatio;
+  const dispX = (place.x - (dW * fit) / 2) * stageRatio;
+  const dispY = (place.y - (dH * fit) / 2) * stageRatio;
+
+  overlay.style.width = `${dispW}px`;
+  overlay.style.height = `${dispH}px`;
+  overlay.style.left = `${dispX}px`;
+  overlay.style.top = `${dispY}px`;
+
+  statText.textContent = `x:${place.x} y:${place.y} max_w:${place.max_w} max_h:${place.max_h} scale:${state.scale.toFixed(3)}`;
+}
+
+function setTemplate(path) {
+  state.template = path;
+  templateImg.src = `/${state.template}`;
+  waitImage(templateImg).then(() => {
+    templateNatural = { w: templateImg.naturalWidth, h: templateImg.naturalHeight };
+    renderOverlay();
+  });
+}
+
+function setStep(size) {
+  stepSize = size;
+}
+
+function applyMove(dx, dy) {
+  const place = state.placements.center;
+  place.x += dx * stepSize;
+  place.y += dy * stepSize;
+  renderOverlay();
+}
+
+function applyScale(delta) {
+  state.scale = Math.max(0.1, state.scale + delta);
+  renderOverlay();
+}
+
+function applyBoxChange(key, delta) {
+  const place = state.placements.center;
+  place[key] = Math.max(10, place[key] + delta);
+  renderOverlay();
+}
+
+function fitToBox() {
+  state.scale = 1.0;
+  renderOverlay();
+}
+
+async function loadState() {
+  const res = await fetch(`/api/designs/${encodeURIComponent(slug)}/mockup-placement`);
+  if (res.ok) {
+    state = await res.json();
+  }
+  templateImg.src = `/${state.template}`;
+  designImg.src = `/api/designs/${encodeURIComponent(slug)}/image`;
+}
+
+function wireControls() {
+  document.querySelectorAll('button[data-dx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyMove(parseInt(btn.dataset.dx, 10), parseInt(btn.dataset.dy, 10));
+    });
+  });
+
+  document.querySelectorAll('button[data-step]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setStep(parseInt(btn.dataset.step, 10));
+    });
+  });
+
+  document.querySelectorAll('button[data-scale]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyScale(parseFloat(btn.dataset.scale));
+    });
+  });
+
+  document.querySelectorAll('button[data-box]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyBoxChange(btn.dataset.box, parseInt(btn.dataset.delta, 10));
+    });
+  });
+
+  document.querySelector('button[data-fit]').addEventListener('click', fitToBox);
+
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    await fetch(`/api/designs/${encodeURIComponent(slug)}/mockup-placement`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    state = {
+      template: state.template,
+      placements: { center: { x: 900, y: 1100, max_w: 2100, max_h: 2400 } },
+      scale: 1.0,
+    };
+    renderOverlay();
+  });
+
+  document.getElementById('regenBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('regenBtn');
+    const status = document.getElementById('mockupStatus');
+    btn.disabled = true;
+    status.textContent = 'Generating mockups…';
+    try {
+      const res = await fetch(`/api/designs/${encodeURIComponent(slug)}/mockups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      });
+      if (!res.ok) throw new Error('Mockup generation failed');
+      status.textContent = 'Done.';
+    } catch (e) {
+      status.textContent = 'Error generating mockups.';
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    }
+  });
+
+  document.getElementById('teeWhite').addEventListener('click', () => {
+    setTemplate('assets/mockups/g64k/White.png');
+  });
+  document.getElementById('teeBlack').addEventListener('click', () => {
+    setTemplate('assets/mockups/g64k/Black.png');
+  });
+}
+
+function wireKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    const key = e.key;
+    if (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight' || key === '+' || key === '=' || key === '-' || key === '_') {
+      e.preventDefault();
+    } else {
+      return;
+    }
+
+    const step = e.shiftKey ? 10 : (e.altKey ? 5 : stepSize);
+    if (key === 'ArrowUp') applyMove(0, -step / stepSize);
+    if (key === 'ArrowDown') applyMove(0, step / stepSize);
+    if (key === 'ArrowLeft') applyMove(-step / stepSize, 0);
+    if (key === 'ArrowRight') applyMove(step / stepSize, 0);
+
+    const scaleDelta = e.shiftKey ? 0.05 : 0.01;
+    if (key === '+' || key === '=') applyScale(scaleDelta);
+    if (key === '-' || key === '_') applyScale(-scaleDelta);
+  });
+}
+
+window.addEventListener('resize', renderOverlay);
+
+function waitImage(img) {
+  if (img.complete && img.naturalWidth) return Promise.resolve();
+  return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+}
+
+Promise.all([
+  loadState(),
+  waitImage(templateImg),
+  waitImage(designImg),
+]).then(() => {
+  templateNatural = { w: templateImg.naturalWidth, h: templateImg.naturalHeight };
+  designNatural = { w: designImg.naturalWidth, h: designImg.naturalHeight };
+  renderOverlay();
+});
+
+wireControls();
+wireKeyboard();
+</script>
+</body>
+</html>

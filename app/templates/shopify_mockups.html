@@ -20,6 +20,16 @@
   <button id="save-to-shopify" class="contrast">Save mockups to Shopify</button>
   <span id="save-status" style="color:#666;font-size:0.95rem"></span>
 </div>
+<div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+  <label style="display:flex;gap:8px;align-items:center;margin:0;">
+    <span style="font-size:.95rem;color:#666;">Design slug</span>
+    <input id="design-slug" type="text" placeholder="Resolving..." value="{{ design_slug or '' }}" style="max-width:220px;" {% if design_slug %}readonly{% endif %} />
+  </label>
+  <button id="open-editor" class="secondary" {% if not design_slug %}disabled{% endif %}>Edit mockup placement</button>
+  {% if not design_slug %}
+    <span id="slug-status" style="color:#a06400;font-size:0.9rem;">Could not resolve design slug.</span>
+  {% endif %}
+</div>
 <main>
   {% if mockups %}
     <div class="grid">
@@ -81,6 +91,14 @@ document.getElementById('save-to-shopify').addEventListener('click', async funct
   } finally {
     btn.disabled = false;
   }
+});
+</script>
+<script>
+document.getElementById('open-editor').addEventListener('click', () => {
+  const input = document.getElementById('design-slug');
+  const slug = (input.value || '').trim();
+  if (!slug) return;
+  window.location.href = `/designs/${encodeURIComponent(slug)}/mockup-editor`;
 });
 </script>
 </body>

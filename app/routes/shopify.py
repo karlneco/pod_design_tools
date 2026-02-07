@@ -27,6 +27,8 @@ def _normalize_product_tags(product: dict) -> dict:
 @bp.get("/")
 def products_page():
     products = store.list(SHOPIFY_PRODUCTS_COLLECTION)
+    # Ensure tags are arrays so the template doesn't iterate characters.
+    products = [_normalize_product_tags(p) for p in products]
 
     # Sort newest first by available timestamp
     def _ts(p):
@@ -99,6 +101,71 @@ def _normalize(p: dict) -> dict:
         "raw": p,  # keep full payload for the right-side “Raw JSON” section
     }
 
+def _norm_text(val: str) -> str:
+    return "".join(ch.lower() for ch in str(val or "").strip() if ch.isalnum() or ch.isspace()).strip()
+
+
+def _resolve_design_slug_for_product(product_id: str) -> str | None:
+    # 1) Direct mapping from design integrations if present
+    try:
+        for design in store.list("designs"):
+            integ = design.get("integrations", {}).get("printify_product", {}) or {}
+            if str(integ.get("shopify_product_id") or "") == str(product_id):
+                return design.get("slug")
+    except Exception:
+        pass
+
+    # 2) Use Printify cache to map Shopify product -> Printify product id, then match design integration
+    printify_id = None
+    try:
+        for item in store.list("printify_products"):
+            if str(item.get("shopify_product_id") or "") == str(product_id):
+                printify_id = str(item.get("id") or item.get("_id") or "")
+                break
+    except Exception:
+        printify_id = None
+
+    if printify_id:
+        try:
+            for design in store.list("designs"):
+                integ = design.get("integrations", {}).get("printify_product", {}) or {}
+                if str(integ.get("id") or integ.get("_id") or "") == printify_id:
+                    return design.get("slug")
+        except Exception:
+            pass
+
+    # 3) Fallback: match by title (Shopify or Printify)
+    target_title = None
+    try:
+        cached = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id))
+        if cached:
+            target_title = cached.get("title")
+    except Exception:
+        target_title = None
+
+    if not target_title:
+        try:
+            for item in store.list("printify_products"):
+                if str(item.get("shopify_product_id") or "") == str(product_id):
+                    target_title = item.get("title")
+                    break
+        except Exception:
+            target_title = None
+
+    if target_title:
+        target_norm = _norm_text(target_title)
+        matches = []
+        try:
+            for design in store.list("designs"):
+                if _norm_text(design.get("title")) == target_norm:
+                    matches.append(design.get("slug"))
+        except Exception:
+            matches = []
+        if len(matches) == 1:
+            return matches[0]
+
+    return None
+
 
 @bp.get("/products/<product_id>/edit")
 def edit_shopify_product(product_id: str):
@@ -165,4 +232,5 @@ def shopify_product_mockups(product_id: str):
                     mockups.append(str(p.relative_to(Config.ASSETS_DIR)))
                 except Exception:
                     mockups.append(str(p.name))
-    return render_template('shopify_mockups.html', id=product_id, mockups=mockups)
+    design_slug = _resolve_design_slug_for_product(product_id)
+    return render_template('shopify_mockups.html', id=product_id, mockups=mockups, design_slug=design_slug)

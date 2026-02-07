@@ -1,4 +1,4 @@
-from flask import Blueprint, send_from_directory
+from flask import Blueprint, send_from_directory, render_template
 
 from .. import Config
 
@@ -13,3 +13,11 @@ def serve_mockup(filename):
 @bp.get('/assets/<path:filename>')
 def serve_asset(filename: str):
     return send_from_directory(Config.ASSETS_DIR, filename)
+
+
+@bp.get("/designs/<slug>/mockup-editor")
+def mockup_editor(slug: str):
+    product_id = None
+    if slug.startswith("shopify-"):
+        product_id = slug.split("shopify-", 1)[1]
+    return render_template("mockup_editor.html", slug=slug, product_id=product_id)

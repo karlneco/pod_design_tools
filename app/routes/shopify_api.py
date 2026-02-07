@@ -4,13 +4,17 @@ from ..extensions import store, shopify_client as shopify
 from .. import Config
 from ..extensions import printify_client as printify
 from pathlib import Path
+import shutil
 import httpx
+from threading import Thread
 
 from ..utils.mockups import generate_mockups_for_design
+from ..services.openai_svc import suggest_description
 
 bp = Blueprint("shopify_api", __name__)
 
 SHOPIFY_PRODUCTS_COLLECTION = "shopify_products"
+UPDATE_PROGRESS: dict[str, dict] = {}
 
 
 def _normalize_product_tags(product: dict) -> dict:
@@ -33,12 +37,146 @@ def _normalize_str(s: str) -> str:
     return (s or "").strip().lower()
 
 
+def _preferred_color_order(shop_product: dict) -> list[str]:
+    """Return ordered color values from Shopify product options (if present)."""
+    for opt in (shop_product.get("options") or []):
+        try:
+            name = (opt.get("name") or "").strip().lower()
+            opt_type = (opt.get("type") or "").strip().lower()
+            if name in ("color", "colour") or opt_type == "color":
+                values = opt.get("values") or []
+                ordered = []
+                for v in values:
+                    if isinstance(v, dict):
+                        val = v.get("name") or v.get("value") or v.get("title")
+                    else:
+                        val = v
+                    if val:
+                        ordered.append(str(val).strip())
+                return ordered
+        except Exception:
+            continue
+    return []
+
+
 def _find_printify_product_by_shopify_id(product_id: str) -> dict | None:
     """Find Printify product associated with Shopify product ID."""
     for item in store.list("printify_products"):
         if str(item.get("shopify_product_id") or "") == str(product_id):
             return item
     return None
+
+
+def _generate_shopify_mockups_for_product(product_id: str, placements: dict, scale: float = 1.0) -> list[Path]:
+    """Generate mockups for a Shopify product using Printify color->design mapping."""
+    pf = _find_printify_product_by_shopify_id(product_id)
+    if not pf:
+        raise FileNotFoundError("No associated Printify product found in cache")
+
+    printify_id = str(pf.get("id") or pf.get("_id"))
+    prod = printify.get_product(printify_id)
+
+    src = _extract_front_design_src(prod)
+    if not src:
+        raise FileNotFoundError("Could not find a front design image on Printify product")
+
+    design_local_path = _resolve_design_path(src, product_id)
+
+    # Persist a local design record for placement editing
+    try:
+        slug = f"shopify-{product_id}"
+        design_dir = Config.DATA_DIR / "designs" / slug
+        design_dir.mkdir(parents=True, exist_ok=True)
+        src_path = Path(design_local_path)
+        ext = src_path.suffix if src_path.suffix else ".png"
+        dest_path = design_dir / f"printify_front{ext}"
+        if not dest_path.exists() or dest_path.stat().st_size == 0:
+            shutil.copyfile(src_path, dest_path)
+
+        existing = store.get("designs", slug) or {}
+        design_record = {
+            "slug": slug,
+            "title": prod.get("title") or f"Shopify {product_id}",
+            "design_png_path": str(dest_path.relative_to(Config.BASE_DIR)),
+            "collections": existing.get("collections", []),
+            "tags": existing.get("tags", []),
+            "notes": existing.get("notes", ""),
+            "status": existing.get("status", {
+                "mockups_generated": False,
+                "product_created_printify": False,
+                "published_shopify": False,
+            }),
+            "generated": existing.get("generated", {
+                "title": None,
+                "description": None,
+                "keywords": [],
+                "colors": [],
+            }),
+            "metadata": existing.get("metadata", {}),
+        }
+        design_record.setdefault("integrations", {})["printify_product"] = {
+            "id": str(prod.get("id") or prod.get("_id") or ""),
+            "shopify_product_id": str(product_id),
+        }
+        store.upsert("designs", slug, design_record)
+    except Exception:
+        current_app.logger.exception("Failed to persist design record for Shopify %s", product_id)
+
+    templates_dir = Config.MOCKUP_STYLE_G64K_DIR
+    templates = _load_template_files(templates_dir)
+    variants = _get_shopify_variants(product_id)
+    templates_to_generate = _filter_templates_by_variants(templates, variants)
+
+    _, color_to_src = _build_color_mappings(prod)
+    template_hex_map, _ = _load_colors_catalog(templates_dir / "colors.json")
+
+    pa_bg_map: dict[str, str] = {}
+    for pa in (prod.get("print_areas") or []):
+        bg = pa.get("background")
+        pa_src = _get_front_src_from_print_area(pa)
+        if pa_src and isinstance(bg, str) and bg:
+            pa_bg_map.setdefault(str(bg).lstrip("#").upper(), pa_src)
+
+    out_dir = Config.PRODUCT_MOCKUPS_DIR / str(product_id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    out_files = []
+    for template_path in templates_to_generate:
+        stem = Path(template_path).stem
+        design_src = _find_design_for_template(
+            template_path, color_to_src, template_hex_map, pa_bg_map, fallback_src=src
+        )
+        template_design_local = None
+        if design_src:
+            template_design_local = _download_design_to_tmp(design_src, product_id, stem)
+        if not template_design_local:
+            template_design_local = design_local_path
+        if not template_design_local:
+            continue
+
+        generate_mockups_for_design(
+            design_png_path=template_design_local,
+            templates=[template_path],
+            placements=placements,
+            out_dir=out_dir,
+            scale=scale,
+        )
+
+        gen_path = out_dir / f"mockup_{stem}.png"
+        final_name = out_dir / f"{stem}.png"
+        try:
+            if gen_path.exists():
+                if final_name.exists():
+                    final_name.unlink(missing_ok=True)
+                gen_path.replace(final_name)
+                out_files.append(final_name)
+            elif final_name.exists():
+                out_files.append(final_name)
+        except Exception:
+            if final_name.exists():
+                out_files.append(final_name)
+
+    return out_files
 
 
 def _extract_front_design_src(prod: dict) -> str | None:
@@ -444,59 +582,16 @@ def api_shopify_generate_mockups(product_id):
       - Generate mockups for each matched template
       - Return paths and variant mappings
     """
-    # 1. Find associated Printify product
-    pf = _find_printify_product_by_shopify_id(product_id)
-    if not pf:
-        return jsonify({"error": "No associated Printify product found in cache"}), 404
-
-    printify_id = str(pf.get("id") or pf.get("_id"))
-    
-    # 2. Fetch Printify product details
+    # Generate using shared helper (keeps placement + color mapping consistent)
     try:
-        prod = printify.get_product(printify_id)
+        out_files = _generate_shopify_mockups_for_product(product_id, placements={}, scale=1.0)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
-        current_app.logger.exception("Failed to fetch Printify product %s", printify_id)
-        return jsonify({"error": f"Failed to fetch Printify product: {e}"}), 400
+        current_app.logger.exception("Mockup generation failed for product %s", product_id)
+        return jsonify({"error": f"Mockup generation failed: {e}"}), 500
 
-    # 3. Extract front design image source
-    src = _extract_front_design_src(prod)
-    if not src:
-        return jsonify({"error": "Could not find a front design image on Printify product"}), 404
-
-    # 4. Resolve design to local path (download if needed)
-    try:
-        design_local_path = _resolve_design_path(src, product_id)
-    except Exception as e:
-        current_app.logger.exception("Failed to obtain design image")
-        return jsonify({"error": f"Failed to obtain design image: {e}"}), 400
-
-    # 5. Load templates
-    templates_dir = Config.ASSETS_DIR / "mockups" / "g64k"
-    try:
-        templates = _load_template_files(templates_dir)
-    except (FileNotFoundError, ValueError) as e:
-        return jsonify({"error": str(e)}), 500
-
-    # 6. Build color mappings from Printify product
-    _, color_to_src = _build_color_mappings(prod)
-
-    # 7. Load colors catalog
-    template_hex_map, _ = _load_colors_catalog(templates_dir / "colors.json")
-
-    # 8. Build background color map from print areas
-    pa_bg_map: dict[str, str] = {}
-    for pa in (prod.get("print_areas") or []):
-        bg = pa.get("background")
-        pa_src = _get_front_src_from_print_area(pa)
-        if pa_src and isinstance(bg, str) and bg:
-            norm_bg = str(bg).lstrip("#").upper()
-            pa_bg_map.setdefault(norm_bg, pa_src)
-
-    # 9. Get Shopify variants and filter templates
     variants = _get_shopify_variants(product_id)
-    templates_to_generate = _filter_templates_by_variants(templates, variants)
-
-    # 10. Build variant -> color title mapping for final output
     variant_to_title: dict[int, str] = {}
     for var in variants:
         try:
@@ -509,66 +604,21 @@ def api_shopify_generate_mockups(product_id):
         except Exception:
             continue
 
-    # 11. Generate mockups for each template
-    out_dir = Config.ASSETS_DIR / "product_mockups" / str(product_id)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    
-    out_files = []
-    for template_path in templates_to_generate:
-        stem = Path(template_path).stem
-        
-        # Find best design source for this template
-        design_src = _find_design_for_template(
-            template_path, color_to_src, template_hex_map, pa_bg_map,
-            fallback_src=src
-        )
-        
-        # Download/resolve design path
-        template_design_local = None
-        if design_src:
-            template_design_local = _download_design_to_tmp(design_src, product_id, stem)
-        
-        if not template_design_local:
-            template_design_local = design_local_path
-        
-        if not template_design_local:
-            current_app.logger.warning("No design available for template %s; skipping", stem)
-            continue
-
-        # Generate mockup
-        try:
-            generate_mockups_for_design(
-                design_png_path=template_design_local,
-                templates=[template_path],
-                placements={},
-                out_dir=out_dir,
-                scale=1.0,
-            )
-        except Exception as e:
-            current_app.logger.exception("Mockup generation failed for template %s", stem)
-            continue
-
-        # Rename and collect output
-        gen_path = out_dir / f"mockup_{stem}.png"
-        final_name = out_dir / f"{stem}.png"
-        try:
-            if gen_path.exists():
-                if final_name.exists():
-                    final_name.unlink(missing_ok=True)
-                gen_path.replace(final_name)
-                out_files.append(final_name)
-        except Exception:
-            if final_name.exists():
-                out_files.append(final_name)
-
     # 12. Build output: relative paths and variant mappings
-    rel_out = [str(p.relative_to(Config.BASE_DIR)) for p in sorted(out_files)]
+    rel_out = []
+    for p in sorted(out_files):
+        path = p if p.is_absolute() else (Config.BASE_DIR / p).resolve()
+        try:
+            rel_out.append(str(path.relative_to(Config.BASE_DIR)))
+        except Exception:
+            rel_out.append(str(p))
     
     stem_to_relpath: dict[str, str] = {}
     for p in out_files:
         stem = _normalize_str(Path(p).stem)
+        path = p if p.is_absolute() else (Config.BASE_DIR / p).resolve()
         try:
-            stem_to_relpath[stem] = str(p.relative_to(Config.BASE_DIR))
+            stem_to_relpath[stem] = str(path.relative_to(Config.BASE_DIR))
         except Exception:
             stem_to_relpath[stem] = str(p)
 
@@ -804,19 +854,42 @@ def api_shopify_apply_generated_mockups(product_id: str):
         return jsonify({"error": "Could not match any Shopify variant colors to generated mockups"}), 400
 
     # 5) Upload matched mockups to Shopify and attach to variants
-    files_to_upload = {}
+    files_to_upload: dict[str, list[int]] = {}
+    color_to_path: dict[str, str] = {}
     for vid, rel in variants_to_file.items():
         # resolve absolute path
         p = Path(rel)
         if not p.is_absolute():
             p = Config.BASE_DIR / rel
-        files_to_upload.setdefault(str(p), []).append(int(vid))
+        path_str = str(p)
+        files_to_upload.setdefault(path_str, []).append(int(vid))
+        # remember color->path for ordering
+        title = variant_to_title_local.get(vid)
+        if title:
+            color_to_path[_norm_local(title)] = path_str
+
+    # Build ordered upload plan based on Shopify color option order
+    ordered_paths: list[str] = []
+    seen_paths: set[str] = set()
+    preferred = _preferred_color_order(shop_product)
+    if preferred:
+        for color in preferred:
+            pth = color_to_path.get(_norm_local(color))
+            if pth and pth not in seen_paths:
+                ordered_paths.append(pth)
+                seen_paths.add(pth)
+    # Append any remaining paths not already ordered (stable, sorted for determinism)
+    for pth in sorted(files_to_upload.keys()):
+        if pth not in seen_paths:
+            ordered_paths.append(pth)
+            seen_paths.add(pth)
 
     uploaded_images = []
     path_to_image_id: dict[str, int] = {}
     errors = []
 
-    for path_str, vids in files_to_upload.items():
+    for path_str in ordered_paths:
+        vids = files_to_upload.get(path_str, [])
         try:
             res = shopify.upload_product_images(product_id, [path_str])
             if not res or not isinstance(res, list):
@@ -856,6 +929,21 @@ def api_shopify_apply_generated_mockups(product_id: str):
                 default_image_id = path_to_image_id.get(str(p_abs))
         except Exception:
             default_image_id = None
+
+    # Prefer the first color in Shopify's option order if available
+    if not default_image_id:
+        preferred = _preferred_color_order(shop_product)
+        if preferred:
+            for color in preferred:
+                n = _norm_local(color)
+                for vid, title in variant_to_title_local.items():
+                    if _norm_local(title) == n and vid in variants_to_file:
+                        p_rel = variants_to_file[vid]
+                        p_abs = Config.BASE_DIR / p_rel if not Path(p_rel).is_absolute() else Path(p_rel)
+                        default_image_id = path_to_image_id.get(str(p_abs))
+                        break
+                if default_image_id:
+                    break
 
     # If still none, try to pick a variant flagged as default in Shopify
     if not default_image_id:
@@ -903,3 +991,246 @@ def api_shopify_apply_generated_mockups(product_id: str):
         "updated_product": (refreshed if refreshed is not None else updated)
     }
     return jsonify(resp)
+
+
+@bp.post("/shopify/products/<product_id>/update_mockups")
+def api_shopify_update_mockups(product_id: str):
+    """Replace variant-linked Shopify images using generated mockups on disk."""
+    if UPDATE_PROGRESS.get(str(product_id), {}).get("running"):
+        return jsonify({"error": "Update already in progress"}), 409
+
+    UPDATE_PROGRESS[str(product_id)] = {
+        "running": True,
+        "phase": "starting",
+        "total": 0,
+        "completed": 0,
+        "uploaded": 0,
+        "deleted": 0,
+        "done": False,
+        "error": None,
+    }
+
+    def _worker():
+        try:
+            progress = UPDATE_PROGRESS[str(product_id)]
+
+            # 1) Locate generated mockups
+            folder = Config.PRODUCT_MOCKUPS_DIR / str(product_id)
+            if not folder.exists():
+                raise RuntimeError(f"No generated mockups folder found for product {product_id}")
+
+            files = [p for p in sorted(folder.iterdir()) if p.suffix.lower() in Config.ALLOWED_EXTS]
+            if not files:
+                raise RuntimeError("No generated mockup image files found")
+
+            # 2) Load Shopify product (cache then live)
+            try:
+                shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id)
+                if not shop_product:
+                    shop_product = shopify.get_product(product_id)
+            except Exception:
+                current_app.logger.exception("Failed to load Shopify product for update_mockups")
+                shop_product = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or {}
+
+            if not shop_product:
+                raise RuntimeError("Shopify product not found (cache or API)")
+
+            # 3) Map file stems -> image data
+            color_image_map: dict[str, Path] = {}
+            for p in files:
+                color_image_map[_normalize_str(p.stem)] = p
+
+            # 4) Build variant color map
+            variant_to_color: dict[int, str] = {}
+            for var in (shop_product.get("variants") or []):
+                try:
+                    if var.get("is_enabled", True) is False:
+                        continue
+                    vid = int(var.get("id") or 0)
+                    color = None
+                    if var.get("option1"):
+                        color = var.get("option1")
+                    elif var.get("option2"):
+                        color = var.get("option2")
+                    else:
+                        t = var.get("title")
+                        if t:
+                            color = t.split(" / ")[0] if " / " in t else t
+                    if color:
+                        variant_to_color[vid] = str(color).strip()
+                except Exception:
+                    continue
+
+            if not variant_to_color:
+                raise RuntimeError("No Shopify variants found or could not resolve variant colors")
+
+            # 5) Build color -> variant ids
+            color_variant_ids: dict[str, list[int]] = {}
+            for vid, color in variant_to_color.items():
+                key = _normalize_str(color)
+                if key in color_image_map:
+                    color_variant_ids.setdefault(key, []).append(vid)
+
+            if not color_variant_ids:
+                raise RuntimeError("No matching variant colors found for mockup files")
+
+            # 6) Delete old images attached to these variants
+            progress["phase"] = "deleting"
+            variant_ids_to_replace = {vid for ids in color_variant_ids.values() for vid in ids}
+            images_to_delete = []
+            for img in (shop_product.get("images") or []):
+                img_variant_ids = img.get("variant_ids") or []
+                if any(int(v) in variant_ids_to_replace for v in img_variant_ids):
+                    if img.get("id"):
+                        images_to_delete.append(int(img["id"]))
+
+            progress["total"] = len(images_to_delete)
+            progress["completed"] = 0
+
+            with httpx.Client(timeout=60) as client:
+                for image_id in images_to_delete:
+                    try:
+                        url = f"{shopify.base}/products/{product_id}/images/{image_id}.json"
+                        r = client.delete(url, headers=shopify.headers)
+                        if r.status_code not in (200, 204):
+                            current_app.logger.warning("Failed to delete image %s: %s %s", image_id, r.status_code, r.text)
+                        else:
+                            progress["deleted"] += 1
+                    except Exception:
+                        current_app.logger.exception("Failed to delete image %s", image_id)
+                    progress["completed"] += 1
+
+            # 7) Upload new images (convert to webp in client)
+            progress["phase"] = "uploading"
+            progress["total"] = len(color_variant_ids)
+            progress["completed"] = 0
+            color_variant_image_id_map: dict[str, int] = {}
+            uploaded = []
+            errors = []
+            # upload in preferred Shopify color order
+            ordered_color_keys: list[str] = []
+            seen_keys: set[str] = set()
+            preferred = _preferred_color_order(shop_product)
+            if preferred:
+                for color in preferred:
+                    key = _normalize_str(color)
+                    if key in color_image_map and key in color_variant_ids and key not in seen_keys:
+                        ordered_color_keys.append(key)
+                        seen_keys.add(key)
+            for key in sorted(color_image_map.keys()):
+                if key in color_variant_ids and key not in seen_keys:
+                    ordered_color_keys.append(key)
+                    seen_keys.add(key)
+
+            for color_key in ordered_color_keys:
+                path = color_image_map.get(color_key)
+                if not path:
+                    continue
+                try:
+                    res = shopify.upload_product_images(product_id, [str(path)])
+                    info = res[0] if res else None
+                    img_obj = info.get("image") if isinstance(info, dict) and info.get("image") else info
+                    image_id = img_obj.get("id") if isinstance(img_obj, dict) else None
+                    if not image_id:
+                        raise RuntimeError(f"No image id returned for {path}")
+                    color_variant_image_id_map[color_key] = int(image_id)
+                    uploaded.append({"color": color_key, "image_id": int(image_id)})
+                    progress["uploaded"] += 1
+                except Exception as e:
+                    current_app.logger.exception("Failed to upload mockup %s", path)
+                    errors.append({"file": str(path), "error": str(e)})
+                progress["completed"] += 1
+
+            if not uploaded:
+                raise RuntimeError("No images were uploaded")
+
+            # 8) Attach images to variant ids + set featured image
+            progress["phase"] = "attaching"
+            images_payload = []
+            for color_key, image_id in color_variant_image_id_map.items():
+                vids = color_variant_ids.get(color_key, [])
+                if vids:
+                    images_payload.append({"id": int(image_id), "variant_ids": vids})
+
+            # determine featured image by preferred color order if available
+            default_image_id = None
+            preferred = _preferred_color_order(shop_product)
+            if preferred:
+                for color in preferred:
+                    key = _normalize_str(color)
+                    if key in color_variant_image_id_map:
+                        default_image_id = color_variant_image_id_map[key]
+                        break
+
+            if not default_image_id:
+                # fallback to first variant color in order
+                for var in (shop_product.get("variants") or []):
+                    try:
+                        color = (var.get("option1") or var.get("option2") or var.get("title") or "").strip()
+                        key = _normalize_str(color.split(" / ")[0] if " / " in color else color)
+                        if key in color_variant_image_id_map:
+                            default_image_id = color_variant_image_id_map[key]
+                            break
+                    except Exception:
+                        continue
+            if not default_image_id:
+                default_image_id = uploaded[0].get("image_id")
+
+            update_payload = {"images": images_payload}
+            if default_image_id:
+                update_payload["image"] = {"id": int(default_image_id)}
+
+            try:
+                updated = shopify.update_product(product_id, update_payload)
+            except Exception as e:
+                current_app.logger.exception("Failed to update Shopify product images for %s", product_id)
+                raise RuntimeError(f"Failed to update Shopify product: {e}")
+
+            try:
+                if hasattr(shopify, 'get_product') and callable(getattr(shopify, 'get_product')):
+                    refreshed = shopify.get_product(product_id)
+                    if refreshed:
+                        store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+            except Exception:
+                current_app.logger.exception("Failed to refresh Shopify product after update_mockups")
+
+            progress["phase"] = "done"
+            progress["done"] = True
+            progress["running"] = False
+        except Exception as e:
+            progress = UPDATE_PROGRESS.get(str(product_id), {})
+            progress["error"] = str(e)
+            progress["phase"] = "error"
+            progress["done"] = True
+            progress["running"] = False
+            UPDATE_PROGRESS[str(product_id)] = progress
+
+    Thread(target=_worker, daemon=True).start()
+    return jsonify({"ok": True, "started": True})
+
+
+@bp.post("/shopify/products/<product_id>/ai/description")
+def api_shopify_ai_description(product_id: str):
+    body = request.get_json(silent=True) or {}
+    title_hint = body.get("title") or ""
+    tags = body.get("tags") or []
+    notes = body.get("notes") or ""
+    if not title_hint or not tags:
+        cached = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {}
+        title_hint = title_hint or cached.get("title") or ""
+        if not tags:
+            tags = cached.get("tags") or []
+    try:
+        description = suggest_description(title_hint=title_hint, tags=tags, notes=notes)
+    except Exception as e:
+        current_app.logger.exception("AI description failed for Shopify %s", product_id)
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"description": description})
+
+
+@bp.get("/shopify/products/<product_id>/update_mockups_progress")
+def api_shopify_update_mockups_progress(product_id: str):
+    progress = UPDATE_PROGRESS.get(str(product_id))
+    if not progress:
+        return jsonify({"running": False, "phase": "idle", "total": 0, "completed": 0, "done": False})
+    return jsonify(progress)
