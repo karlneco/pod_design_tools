@@ -1,9 +1,10 @@
 import os
+import shutil
 from datetime import datetime
 
-from flask import Blueprint, render_template, current_app, send_from_directory
+from flask import Blueprint, render_template, current_app, send_from_directory, make_response
 
-from ..extensions import store, shopify_client as shopify
+from ..extensions import store, shopify_client as shopify, printify_client as printify
 from .. import Config
 from pathlib import Path
 from flask import render_template
@@ -169,6 +170,165 @@ def _resolve_design_slug_for_product(product_id: str) -> str | None:
     return None
 
 
+def _list_persona_options() -> list[dict]:
+    base = Config.ASSETS_DIR / "personas"
+    out = [
+        {"key": "generic_female", "label": "Generic Female", "image": None},
+        {"key": "generic_male", "label": "Generic Male", "image": None},
+    ]
+    if not base.exists():
+        return out
+    for p in sorted(base.iterdir()):
+        if p.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+            continue
+        label = p.stem.replace("_", " ")
+        rel = str(p.relative_to(Config.ASSETS_DIR))
+        out.append({
+            "key": f"persona:{p.name}",
+            "label": label,
+            "image": f"/assets/{rel}",
+        })
+    return out
+
+
+def _extract_product_colors(product: dict) -> list[str]:
+    colors = []
+
+    def _push(value):
+        c = str(value or "").strip()
+        if c and c not in colors:
+            colors.append(c)
+
+    # 1) canonical Shopify option values (often the most complete list)
+    for opt in (product.get("options") or []):
+        name = str(opt.get("name") or "").strip().lower()
+        if name not in ("color", "colour"):
+            continue
+        for v in (opt.get("values") or []):
+            if isinstance(v, dict):
+                _push(v.get("name") or v.get("value") or v.get("title"))
+            else:
+                _push(v)
+
+    # 2) normalized compact list
+    for cv in (product.get("color_variants") or []):
+        _push(cv.get("color"))
+
+    # 3) normalized variant list
+    for v in (product.get("variants") or []):
+        _push(v.get("color"))
+
+    return colors
+
+
+def _lifestyle_root(product_id: str) -> Path:
+    return Config.DATA_DIR / "designs" / f"shopify-{product_id}" / "lifestyle"
+
+
+def _migrate_lifestyle_assets_to_data(product_id: str) -> None:
+    old_root = Config.ASSETS_DIR / "lifestyle" / str(product_id)
+    new_root = _lifestyle_root(product_id)
+    if not old_root.exists():
+        return
+    new_root.mkdir(parents=True, exist_ok=True)
+    for src in old_root.rglob("*"):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(old_root)
+        dst = new_root / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists():
+            continue
+        try:
+            shutil.move(str(src), str(dst))
+        except Exception:
+            # Keep going for best-effort migration.
+            continue
+
+
+def _list_lifestyle_images(product_id: str) -> list[dict]:
+    _migrate_lifestyle_assets_to_data(product_id)
+    base = _lifestyle_root(product_id)
+    if not base.exists():
+        return []
+    out = []
+    for p in sorted(base.rglob("*")):
+        if not p.is_file():
+            continue
+        if p.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+            continue
+        if "printify_refs" in p.parts:
+            continue
+        rel = p.relative_to(base)
+        meta = {}
+        meta_path = p.with_suffix(".json")
+        if meta_path.exists():
+            try:
+                import json
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        out.append({
+            "name": p.name,
+            "url": f"/designs/shopify-{product_id}/lifestyle/{rel.as_posix()}",
+            "path": str(p),
+            "prompt": meta.get("prompt") or "",
+            "meta": meta.get("meta") or {},
+            "uploaded_to_shopify": bool((meta.get("shopify") or {}).get("uploaded")),
+            "uploaded_at": (meta.get("shopify") or {}).get("uploaded_at"),
+        })
+    out.sort(key=lambda x: (
+        0 if x.get("uploaded_to_shopify") else 1,
+        str(x.get("uploaded_at") or ""),
+        x.get("name") or "",
+    ), reverse=False)
+    return out
+
+
+def _get_printify_reference_images_for_shopify_product(product_id: str) -> list[str]:
+    printify_item = None
+    for item in store.list("printify_products"):
+        if str(item.get("shopify_product_id") or "") == str(product_id):
+            printify_item = item
+            break
+    if not printify_item:
+        return []
+    printify_id = str(printify_item.get("id") or printify_item.get("_id") or "")
+    if not printify_id:
+        return []
+    try:
+        prod = printify.get_product(printify_id)
+    except Exception:
+        return []
+
+    refs = []
+    preview = prod.get("preview")
+    if isinstance(preview, str) and preview:
+        refs.append(preview)
+    for img in (prod.get("images") or []):
+        if isinstance(img, str) and img:
+            refs.append(img)
+        elif isinstance(img, dict):
+            src = img.get("src") or img.get("url")
+            if src:
+                refs.append(src)
+    for pa in (prod.get("print_areas") or []):
+        for ph in (pa.get("placeholders") or []):
+            for img in (ph.get("images") or []):
+                if isinstance(img, dict):
+                    src = img.get("src") or img.get("url")
+                    if src:
+                        refs.append(src)
+    dedup = []
+    seen = set()
+    for r in refs:
+        if r in seen:
+            continue
+        seen.add(r)
+        dedup.append(r)
+    return dedup[:20]
+
+
 @bp.get("/products/<product_id>/edit")
 def edit_shopify_product(product_id: str):
     """
@@ -236,3 +396,29 @@ def shopify_product_mockups(product_id: str):
                     mockups.append(str(p.name))
     design_slug = _resolve_design_slug_for_product(product_id)
     return render_template('shopify_mockups.html', id=product_id, mockups=mockups, design_slug=design_slug)
+
+
+@bp.get("/products/<product_id>/lifestyle")
+def shopify_product_lifestyle(product_id: str):
+    cached = (store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or
+              store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {})
+    product = _normalize(cached) if cached else {"id": str(product_id), "title": "(not found)", "description": ""}
+    persona_options = _list_persona_options()
+    color_options = _extract_product_colors(product)
+    lifestyle_images = _list_lifestyle_images(product_id)
+    lifestyle_defaults = cached.get("lifestyle_defaults") or {}
+    age_segments = ["13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"]
+    html = render_template(
+        "shopify_lifestyle.html",
+        p=product,
+        personas=persona_options,
+        color_options=color_options,
+        lifestyle_images=lifestyle_images,
+        lifestyle_defaults=lifestyle_defaults,
+        age_segments=age_segments,
+    )
+    resp = make_response(html)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp

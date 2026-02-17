@@ -30,13 +30,15 @@ class ShopifyClient:
             return None
         return f"https://{self.domain.replace('.myshopify.com', '')}.myshopify.com/products/{handle}"
 
-    def upload_product_images(self, product_id: str, image_paths: list[str]):
+    def upload_product_images(self, product_id: str, image_paths: list[str], webp_quality: int = 90):
         """Upload one or more local image files to Shopify.
 
         Files will be converted to WebP (quality=90) in-memory before encoding to base64
         to keep payloads small (PNG files can be large). If conversion fails we fall
         back to the raw file bytes.
         """
+        q = max(1, min(int(webp_quality or 90), 100))
+
         def _to_webp_bytes(path: str) -> bytes:
             try:
                 with Image.open(path) as img:
@@ -47,8 +49,8 @@ class ShopifyClient:
                         else:
                             img = img.convert("RGB")
                     buf = BytesIO()
-                    # Use quality=90 as requested; method=6 gives a good compression/quality tradeoff
-                    img.save(buf, format="WEBP", quality=90, method=6)
+                    # method=6 gives a good compression/quality tradeoff
+                    img.save(buf, format="WEBP", quality=q, method=6)
                     return buf.getvalue()
             except Exception:
                 # Conversion failed; let caller handle fallback
@@ -71,6 +73,53 @@ class ShopifyClient:
                 r.raise_for_status()
                 uploaded.append(r.json())
         return uploaded
+
+    def place_images_after_hero(self, product_id: str, image_ids: list[int]) -> dict:
+        """Move the given image ids to positions directly after the hero image."""
+        if not image_ids:
+            return {"ok": True, "positions": []}
+
+        product = self.get_product(product_id)
+        images = product.get("images") or []
+        if not images:
+            return {"ok": True, "positions": []}
+
+        image_ids = [int(i) for i in image_ids]
+        unique_new = []
+        seen = set()
+        for i in image_ids:
+            if i not in seen:
+                unique_new.append(i)
+                seen.add(i)
+
+        hero_id = None
+        try:
+            hero_id = int((product.get("image") or {}).get("id") or 0) or None
+        except Exception:
+            hero_id = None
+        if hero_id is None:
+            try:
+                first = sorted(images, key=lambda x: int(x.get("position") or 999999))[0]
+                hero_id = int(first.get("id") or 0) or None
+            except Exception:
+                hero_id = None
+
+        existing_ids = []
+        for im in sorted(images, key=lambda x: int(x.get("position") or 999999)):
+            try:
+                existing_ids.append(int(im.get("id")))
+            except Exception:
+                continue
+
+        ordered = []
+        if hero_id and hero_id in existing_ids:
+            ordered.append(hero_id)
+        ordered.extend([i for i in unique_new if i in existing_ids and i not in ordered])
+        ordered.extend([i for i in existing_ids if i not in ordered])
+
+        payload = {"images": [{"id": iid, "position": idx + 1} for idx, iid in enumerate(ordered)]}
+        self.update_product(product_id, payload)
+        return {"ok": True, "positions": payload["images"]}
 
     def list_all_products(self, limit: int = 250) -> list[dict]:
         """Fetch all products via REST pagination using page_info.

@@ -61,6 +61,34 @@ DESCRIPTION_USER_PROMPT = (
     "Notes: {notes}\n"
 )
 
+LIFESTYLE_PROMPT_USER_PROMPT = (
+    "Create a production-ready image-generation prompt for Gemini Nano Banana Pro.\n"
+    "Output plain text prompt only, no markdown, no quotes, no extra commentary.\n\n"
+    "Context:\n"
+    "- Product title: {title}\n"
+    "- Product description HTML: {description}\n"
+    "- Garment type: {garment_type}\n"
+    "- Garment color: {garment_color}\n"
+    "- Print location: {print_location}\n"
+    "- Person selection: {person_selection}\n"
+    "- Age segment: {age_segment}\n"
+    "- Number of requested images: {num_images}\n"
+    "- A clean garment reference image from Printify WILL be provided to the image model.\n"
+    "- There may also be a persona reference image.\n\n"
+    "Hard requirements for the prompt you output:\n"
+    "1) The subject must wear the exact garment type and specified color.\n"
+    "2) The visible print placement must match print_location.\n"
+    "3) The design must match the provided reference garment design exactly; do not invent or reinterpret graphics.\n"
+    "4) Do not describe the graphic content explicitly (no guessed slogans/details). Refer to it as the provided design.\n"
+    "5) Shot framing must clearly show the printed area (waist-up or full-body as appropriate).\n"
+    "6) Theme should be derived from product description mood/vibe.\n"
+    "7) Activity and setting must be age-appropriate and realistic for the selected age segment.\n"
+    "8) If person_selection is generic Male/Female, use a non-specific model.\n"
+    "9) Include concise camera/composition guidance and lighting direction.\n"
+    "10) Avoid unsafe/extreme behavior for older age segments.\n"
+    "11) End with a short negative prompt clause to avoid warped text, extra logos, and wrong garment color."
+)
+
 def _chat(messages):
     body = {
         "model": MODEL,
@@ -179,4 +207,35 @@ def suggest_description(title_hint: str, tags, notes: str):
         )
 
     content = content.replace("–", "-").replace("—", "-").replace("“", "\"").replace("”", "\"").replace("’", "'")
+    return content
+
+
+def suggest_lifestyle_prompt(
+    *,
+    title: str,
+    description: str,
+    garment_type: str,
+    garment_color: str,
+    print_location: str,
+    person_selection: str,
+    age_segment: str,
+    num_images: int,
+) -> str:
+    prompt = LIFESTYLE_PROMPT_USER_PROMPT.format(
+        title=title or "",
+        description=description or "",
+        garment_type=garment_type or "",
+        garment_color=garment_color or "",
+        print_location=print_location or "front",
+        person_selection=person_selection or "Generic Female",
+        age_segment=age_segment or "35-44",
+        num_images=max(1, int(num_images or 1)),
+    )
+    content = _chat([
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]).strip()
+    if content.startswith("```"):
+        lines = [l for l in content.splitlines() if not l.strip().startswith("```")]
+        content = "\n".join(lines).strip()
     return content

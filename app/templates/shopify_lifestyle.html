@@ -1,0 +1,413 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Lifestyle Images</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <style>
+    .grid{display:grid;grid-template-columns:340px 1fr;gap:1rem;align-items:start}
+    .card{border:1px solid #eee;border-radius:10px;padding:1rem}
+    .muted{color:#666}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem}
+    .thumb{position:relative;border:1px solid #e6e6e6;border-radius:8px;padding:.4rem;background:#fff}
+    .thumb.uploaded{border:2px solid #2b8a3e;box-shadow:0 0 0 1px rgba(43,138,62,.15)}
+    .uploaded-badge{position:absolute;top:6px;left:6px;background:#2b8a3e;color:#fff;font-size:.65rem;padding:.12rem .35rem;border-radius:999px}
+    .thumb img{width:100%;height:auto;border-radius:6px;display:block;cursor:zoom-in}
+    .thumb label{display:flex;align-items:flex-start;gap:.35rem;margin:.35rem 0 0}
+    .thumb .name{font-size:.72rem;line-height:1.1;word-break:break-word;color:#444}
+    .viewer{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:1000}
+    .viewer.open{display:flex}
+    .viewer-content{max-width:92vw;max-height:92vh;display:flex;flex-direction:column;gap:.5rem;align-items:center}
+    .viewer img{
+      width:auto;
+      height:auto;
+      max-width:min(1100px, 92vw);
+      max-height:70vh;
+      object-fit:contain;
+      border-radius:10px;
+      border:1px solid #333;
+      background:#111;
+    }
+    .viewer-prompt-row{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:start;max-width:94vw;width:100%}
+    .viewer-prompt{background:#fff;padding:.6rem .75rem;border-radius:8px;font-size:.82rem;line-height:1.3;max-height:14vh;overflow:auto}
+    .viewer-reuse{position:static;align-self:start}
+    #viewerClose{position:absolute;top:20px;right:20px}
+    textarea{min-height:220px}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+  </style>
+</head>
+<body class="container">
+<header style="display:flex;justify-content:space-between;align-items:center;">
+  <h1>Lifestyle Images</h1>
+  <nav>
+    <a href="/shopify/products/{{ p.id }}/edit">Back to product</a>
+  </nav>
+</header>
+
+<main class="grid">
+  <section class="card">
+    <input type="hidden" id="productId" value="{{ p.id }}"/>
+    <p><b>{{ p.title }}</b></p>
+    <p class="muted">Use OpenAI to draft the prompt, then Gemini Nano Banana Pro to generate images with references.</p>
+
+    <label>
+      Garment type
+      <select id="garmentType">
+        {% set default_garment_type = lifestyle_defaults.get('garment_type') or ('Hoodie' if 'hood' in (p.type or '')|lower else 'T-Shirt') %}
+        <option value="T-Shirt" {% if default_garment_type == 'T-Shirt' %}selected{% endif %}>T-Shirt</option>
+        <option value="Hoodie" {% if default_garment_type == 'Hoodie' %}selected{% endif %}>Hoodie</option>
+      </select>
+    </label>
+
+    <label>
+      Garment color
+      <select id="garmentColor">
+        {% set default_color = lifestyle_defaults.get('garment_color') %}
+        {% if color_options %}
+          {% for c in color_options %}
+            <option value="{{ c }}" {% if default_color and c == default_color %}selected{% elif (not default_color) and loop.first %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        {% else %}
+          <option value="Black" {% if not default_color or default_color == 'Black' %}selected{% endif %}>Black</option>
+          {% if default_color and default_color != 'Black' %}
+            <option value="{{ default_color }}" selected>{{ default_color }}</option>
+          {% endif %}
+        {% endif %}
+      </select>
+    </label>
+
+    <label>
+      Print location
+      <select id="printLocation">
+        {% set default_print_location = lifestyle_defaults.get('print_location') or 'front' %}
+        <option value="front" {% if default_print_location == 'front' %}selected{% endif %}>Front</option>
+        <option value="back" {% if default_print_location == 'back' %}selected{% endif %}>Back</option>
+      </select>
+    </label>
+
+    <label>
+      Persona / gender
+      <select id="personSelection">
+        {% set default_person = lifestyle_defaults.get('person_selection') or 'generic_female' %}
+        {% for person in personas %}
+          <option value="{{ person.key }}" data-image="{{ person.image or '' }}" {% if person.key == default_person %}selected{% endif %}>{{ person.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Age segment
+      <select id="ageSegment">
+        {% set default_age = lifestyle_defaults.get('age_segment') or '35-44' %}
+        {% for seg in age_segments %}
+          <option value="{{ seg }}" {% if seg == default_age %}selected{% endif %}>{{ seg }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Number of images
+      <input type="number" id="numImages" min="1" max="10" step="1" value="{{ lifestyle_defaults.get('num_images') or 3 }}"/>
+    </label>
+
+    <small class="muted">Printify reference image will be auto-downloaded and cached per color/location.</small>
+
+    <img id="personaPreview" alt="" style="width:100%;border-radius:8px;border:1px solid #e6e6e6;display:none;"/>
+    <small class="muted">Persona image is only sent to Gemini generation, not to OpenAI prompt generation.</small>
+  </section>
+
+  <section class="card">
+    <label>
+      Generated prompt (editable)
+      <textarea id="promptText" placeholder="Click 'Generate prompt' to draft a prompt..."></textarea>
+    </label>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <button type="button" id="genPromptBtn">Generate prompt</button>
+      <button type="button" id="genImageBtn" class="secondary">Generate image(s)</button>
+      <button type="button" id="applySelectedBtn" class="secondary">Add selected to Shopify</button>
+      <button type="button" id="deleteSelectedBtn" class="secondary">Delete selected</button>
+      <small id="status" class="muted"></small>
+    </div>
+    <hr/>
+    <h3>Results</h3>
+    <div id="gallery" class="gallery"></div>
+  </section>
+</main>
+<div id="viewer" class="viewer" role="dialog" aria-modal="true">
+  <button type="button" id="viewerClose">Close</button>
+  <div class="viewer-content">
+    <img id="viewerImg" alt="Lifestyle preview"/>
+    <div class="viewer-prompt-row">
+      <div id="viewerPrompt" class="viewer-prompt"></div>
+      <button type="button" id="viewerReuse" class="secondary viewer-reuse">Reuse</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const personSelection = document.getElementById('personSelection');
+const personaPreview = document.getElementById('personaPreview');
+const statusEl = document.getElementById('status');
+const galleryEl = document.getElementById('gallery');
+const viewerEl = document.getElementById('viewer');
+const viewerImg = document.getElementById('viewerImg');
+const viewerPrompt = document.getElementById('viewerPrompt');
+const viewerReuse = document.getElementById('viewerReuse');
+const existingImages = {{ lifestyle_images | tojson }};
+let currentViewerItem = null;
+let currentViewerIndex = -1;
+
+function selectedUrls() {
+  return Array.from(document.querySelectorAll('input[name="pick"]:checked')).map(x => x.value);
+}
+
+function openViewer(item) {
+  const idx = existingImages.findIndex(x => x.url === item?.url);
+  currentViewerIndex = idx;
+  const src = item?.url || '';
+  const prompt = item?.prompt || '';
+  currentViewerItem = item || null;
+  viewerImg.src = src;
+  viewerPrompt.textContent = prompt || 'No saved prompt for this image.';
+  viewerEl.classList.add('open');
+}
+
+function closeViewer() {
+  viewerEl.classList.remove('open');
+  viewerImg.removeAttribute('src');
+  currentViewerItem = null;
+  currentViewerIndex = -1;
+}
+
+document.getElementById('viewerClose').addEventListener('click', closeViewer);
+viewerEl.addEventListener('click', (e) => {
+  if (e.target === viewerEl) closeViewer();
+});
+
+function stepViewer(delta) {
+  if (!viewerEl.classList.contains('open')) return;
+  if (!existingImages.length) return;
+  if (currentViewerIndex < 0) currentViewerIndex = 0;
+  currentViewerIndex = (currentViewerIndex + delta + existingImages.length) % existingImages.length;
+  openViewer(existingImages[currentViewerIndex]);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!viewerEl.classList.contains('open')) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeViewer();
+    return;
+  }
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    stepViewer(1);
+    return;
+  }
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    stepViewer(-1);
+  }
+});
+
+viewerReuse.addEventListener('click', () => {
+  if (!currentViewerItem) return;
+  document.getElementById('promptText').value = currentViewerItem.prompt || '';
+  const meta = currentViewerItem.meta || {};
+  const setIf = (id, value) => {
+    if (!value) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    const opt = Array.from(el.options || []).find(o => String(o.value) === String(value));
+    if (opt) el.value = value;
+  };
+  setIf('garmentType', meta.garment_type);
+  setIf('garmentColor', meta.garment_color);
+  setIf('printLocation', meta.print_location);
+  setIf('personSelection', meta.person_selection);
+  setIf('ageSegment', meta.age_segment);
+  if (meta.num_images) document.getElementById('numImages').value = Number(meta.num_images);
+  updatePersonaPreview();
+  statusEl.textContent = 'Prompt and metadata loaded from image.';
+});
+
+function renderGallery(images) {
+  galleryEl.innerHTML = '';
+  const ordered = [...(images || [])].sort((a, b) => {
+    const au = a.uploaded_to_shopify ? 1 : 0;
+    const bu = b.uploaded_to_shopify ? 1 : 0;
+    if (au !== bu) return bu - au;
+    const at = (a.uploaded_at || '');
+    const bt = (b.uploaded_at || '');
+    if (at !== bt) return bt.localeCompare(at);
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  for (const img of ordered) {
+    const card = document.createElement('div');
+    card.className = 'thumb';
+    if (img.uploaded_to_shopify) card.classList.add('uploaded');
+
+    const el = document.createElement('img');
+    el.src = img.url;
+    el.alt = img.name || 'Lifestyle image';
+    el.addEventListener('click', () => openViewer(img));
+
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.name = 'pick';
+    cb.value = img.url;
+    const span = document.createElement('span');
+    span.className = 'name';
+    span.textContent = img.name || 'Select';
+    label.appendChild(cb);
+    label.appendChild(span);
+
+    if (img.uploaded_to_shopify) {
+      const badge = document.createElement('div');
+      badge.className = 'uploaded-badge';
+      badge.textContent = 'Uploaded';
+      card.appendChild(badge);
+    }
+
+    card.appendChild(el);
+    card.appendChild(label);
+    galleryEl.appendChild(card);
+  }
+}
+
+function updatePersonaPreview() {
+  const opt = personSelection.options[personSelection.selectedIndex];
+  const img = opt?.dataset?.image || '';
+  if (!img) {
+    personaPreview.style.display = 'none';
+    personaPreview.removeAttribute('src');
+    return;
+  }
+  personaPreview.src = img;
+  personaPreview.style.display = 'block';
+}
+personSelection.addEventListener('change', updatePersonaPreview);
+updatePersonaPreview();
+renderGallery(existingImages);
+
+function payloadBase() {
+  return {
+    garment_type: document.getElementById('garmentType').value,
+    garment_color: document.getElementById('garmentColor').value,
+    print_location: document.getElementById('printLocation').value,
+    person_selection: document.getElementById('personSelection').value,
+    age_segment: document.getElementById('ageSegment').value,
+    num_images: Number(document.getElementById('numImages').value || 1),
+  };
+}
+
+document.getElementById('genPromptBtn').addEventListener('click', async () => {
+  const productId = document.getElementById('productId').value;
+  statusEl.textContent = 'Generating prompt...';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/lifestyle/prompt`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payloadBase()),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    document.getElementById('promptText').value = data.prompt || '';
+    statusEl.textContent = 'Prompt ready.';
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+});
+
+document.getElementById('genImageBtn').addEventListener('click', async () => {
+  const productId = document.getElementById('productId').value;
+  const prompt = document.getElementById('promptText').value.trim();
+  if (!prompt) {
+    statusEl.textContent = 'Error: Prompt is empty.';
+    return;
+  }
+  statusEl.textContent = 'Generating image(s)...';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/lifestyle/generate`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ...payloadBase(), prompt }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    const merged = (existingImages || []).concat((data.images || []).map(i => ({
+      name: i.name || (i.url || '').split('/').pop(),
+      url: i.url,
+      prompt: i.prompt || '',
+      meta: i.meta || {},
+    })));
+    existingImages.length = 0;
+    for (const m of merged) existingImages.push(m);
+    renderGallery(existingImages);
+    statusEl.textContent = `Generated ${data.images?.length || 0} image(s).`;
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+});
+
+document.getElementById('applySelectedBtn').addEventListener('click', async () => {
+  const productId = document.getElementById('productId').value;
+  const urls = selectedUrls();
+  if (!urls.length) {
+    statusEl.textContent = 'Error: Select at least one image.';
+    return;
+  }
+  statusEl.textContent = 'Uploading selected images to Shopify...';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/lifestyle/images/apply_to_shopify`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ urls }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    const uploadedSet = new Set(data.uploaded_urls || []);
+    for (const img of existingImages) {
+      if (uploadedSet.has(img.url)) {
+        img.uploaded_to_shopify = true;
+        img.uploaded_at = new Date().toISOString();
+      }
+    }
+    renderGallery(existingImages);
+    statusEl.textContent = `Uploaded ${data.uploaded_count || 0} image(s) to Shopify.`;
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+});
+
+document.getElementById('deleteSelectedBtn').addEventListener('click', async () => {
+  const productId = document.getElementById('productId').value;
+  const urls = selectedUrls();
+  if (!urls.length) {
+    statusEl.textContent = 'Error: Select at least one image.';
+    return;
+  }
+  if (!confirm(`Delete ${urls.length} selected image(s)?`)) return;
+  statusEl.textContent = 'Deleting selected images...';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/lifestyle/images/delete`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ urls }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    const keep = existingImages.filter(i => !(data.deleted || []).includes(i.url));
+    existingImages.length = 0;
+    for (const k of keep) existingImages.push(k);
+    renderGallery(existingImages);
+    statusEl.textContent = `Deleted ${data.deleted?.length || 0} image(s).`;
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>

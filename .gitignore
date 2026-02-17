@@ -44,3 +44,6 @@ coverage.xml
 
 # OS
 .DS_Store
+
+# Generated lifestyle images (do not commit)
+data/designs/shopify-*/lifestyle/

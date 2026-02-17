@@ -5,12 +5,15 @@ from .. import Config
 from ..extensions import printify_client as printify
 from pathlib import Path
 from datetime import datetime, timezone
+import json
 import shutil
 import httpx
 from threading import Thread
+from urllib.parse import urlparse
 
 from ..utils.mockups import generate_mockups_for_design
-from ..services.openai_svc import suggest_description
+from ..services.openai_svc import suggest_description, suggest_lifestyle_prompt
+from ..services.gemini_svc import generate_lifestyle_images
 
 bp = Blueprint("shopify_api", __name__)
 
@@ -36,6 +39,193 @@ def _merge_swatch_mapping_status(product: dict, status: dict | None) -> dict:
         return merged
     merged["swatch_mapping"] = status
     return merged
+
+
+def _persona_key_to_local_path(person_key: str | None) -> str | None:
+    key = str(person_key or "").strip()
+    if not key.startswith("persona:"):
+        return None
+    filename = key.split("persona:", 1)[1]
+    p = Config.ASSETS_DIR / "personas" / filename
+    if p.exists() and p.is_file():
+        return str(p)
+    return None
+
+
+def _safe_slug(value: str) -> str:
+    out = "".join(ch.lower() if ch.isalnum() else "-" for ch in str(value or ""))
+    out = "-".join(part for part in out.split("-") if part)
+    return out or "unknown"
+
+
+def _lifestyle_root(product_id: str) -> Path:
+    return Config.DATA_DIR / "designs" / f"shopify-{product_id}" / "lifestyle"
+
+
+def _migrate_lifestyle_assets_to_data(product_id: str) -> None:
+    old_root = Config.ASSETS_DIR / "lifestyle" / str(product_id)
+    new_root = _lifestyle_root(product_id)
+    if not old_root.exists():
+        return
+    new_root.mkdir(parents=True, exist_ok=True)
+    for src in old_root.rglob("*"):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(old_root)
+        dst = new_root / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists():
+            continue
+        try:
+            shutil.move(str(src), str(dst))
+        except Exception:
+            continue
+
+
+def _resolve_printify_reference_image(
+    product_id: str,
+    garment_color: str,
+    print_location: str,
+) -> tuple[str, str]:
+    """Ensure local cached Printify reference image for this product/color/location.
+
+    Returns: (local_path, source_url)
+    """
+    color_slug = _safe_slug(garment_color)
+    loc = (print_location or "front").strip().lower()
+    _migrate_lifestyle_assets_to_data(product_id)
+    refs_dir = _lifestyle_root(product_id) / "printify_refs"
+    refs_dir.mkdir(parents=True, exist_ok=True)
+
+    # Reuse previously downloaded reference if present.
+    existing = sorted(refs_dir.glob(f"{loc}_{color_slug}.*"))
+    if existing:
+        return str(existing[0]), ""
+
+    pf = _find_printify_product_by_shopify_id(product_id)
+    if not pf:
+        raise FileNotFoundError("No linked Printify product found for this Shopify product.")
+    printify_id = str(pf.get("id") or pf.get("_id") or "")
+    if not printify_id:
+        raise FileNotFoundError("Linked Printify product id missing in cache.")
+
+    prod = printify.get_product(printify_id)
+    target_color = _normalize_str(garment_color)
+
+    # Build color option-id lookup and variant ids for the selected color.
+    color_id_by_title: dict[str, int] = {}
+    for opt in (prod.get("options") or []):
+        name = _normalize_str(opt.get("name") or opt.get("type"))
+        if name not in ("color", "colour"):
+            continue
+        for v in (opt.get("values") or []):
+            try:
+                vid = int(v.get("id"))
+            except Exception:
+                continue
+            title = _normalize_str(v.get("title") or v.get("name") or "")
+            if title:
+                color_id_by_title[title] = vid
+
+    target_color_id = color_id_by_title.get(target_color)
+    color_variant_ids: set[int] = set()
+    for var in (prod.get("variants") or []):
+        try:
+            pid = int(var.get("id"))
+        except Exception:
+            continue
+        opts = var.get("options")
+        if isinstance(opts, list):
+            if target_color_id is not None and int(target_color_id) in [int(x) for x in opts if str(x).isdigit()]:
+                color_variant_ids.add(pid)
+                continue
+            title = _normalize_str(var.get("title"))
+            if target_color and target_color in title:
+                color_variant_ids.add(pid)
+                continue
+        elif isinstance(opts, dict):
+            c = _normalize_str(opts.get("color") or opts.get("Color") or opts.get("colour") or opts.get("Colour"))
+            if c == target_color:
+                color_variant_ids.add(pid)
+
+    # Rank product image candidates.
+    best_url = None
+    best_score = -999
+    for im in (prod.get("images") or []):
+        if isinstance(im, str):
+            src = im
+            variant_ids = []
+            position = ""
+            is_default = False
+        else:
+            src = im.get("src") or im.get("url")
+            variant_ids = [int(v) for v in (im.get("variant_ids") or []) if str(v).isdigit()]
+            position = _normalize_str(im.get("position"))
+            is_default = bool(im.get("is_default"))
+        if not src:
+            continue
+
+        score = 0
+        if loc and position:
+            score += 6 if position == loc else -2
+        if color_variant_ids:
+            if variant_ids and set(variant_ids).intersection(color_variant_ids):
+                score += 8
+            elif variant_ids:
+                score -= 3
+        if is_default:
+            score += 1
+        if score > best_score:
+            best_score = score
+            best_url = src
+
+    if not best_url:
+        best_url = prod.get("preview")
+    if not best_url:
+        raise FileNotFoundError("Could not find a usable Printify reference image URL.")
+
+    with httpx.Client(timeout=60) as client:
+        r = client.get(best_url)
+        r.raise_for_status()
+        ctype = (r.headers.get("content-type") or "").lower()
+        ext = ".jpg"
+        if "png" in ctype:
+            ext = ".png"
+        elif "webp" in ctype:
+            ext = ".webp"
+        else:
+            path_ext = Path(urlparse(best_url).path).suffix.lower()
+            if path_ext in (".png", ".jpg", ".jpeg", ".webp"):
+                ext = ".jpg" if path_ext == ".jpeg" else path_ext
+        out_file = refs_dir / f"{loc}_{color_slug}{ext}"
+        out_file.write_bytes(r.content)
+
+    return str(out_file), best_url
+
+
+def _lifestyle_local_path_from_url(product_id: str, url: str) -> Path | None:
+    if not isinstance(url, str):
+        return None
+
+    # New path: /designs/shopify-<id>/lifestyle/<file>
+    new_prefix = f"/designs/shopify-{product_id}/lifestyle/"
+    if url.startswith(new_prefix):
+        rel = url[len(new_prefix):].strip()
+        base = _lifestyle_root(product_id).resolve()
+        p = (base / rel).resolve()
+        if str(p).startswith(str(base)):
+            return p
+
+    # Legacy path: /assets/lifestyle/<id>/<file>
+    old_prefix = "/assets/"
+    if url.startswith(old_prefix):
+        rel = url[len(old_prefix):].strip()
+        if rel.startswith(f"lifestyle/{product_id}/"):
+            p = (Config.ASSETS_DIR / rel).resolve()
+            old_base = (Config.ASSETS_DIR / "lifestyle" / str(product_id)).resolve()
+            if str(p).startswith(str(old_base)):
+                return p
+    return None
 
 
 # ========================================
@@ -70,10 +260,74 @@ def _preferred_color_order(shop_product: dict) -> list[str]:
 
 
 def _find_printify_product_by_shopify_id(product_id: str) -> dict | None:
-    """Find Printify product associated with Shopify product ID."""
+    """Find Printify product associated with Shopify product ID.
+
+    Resolution order:
+    1) local printify_products cache by shopify_product_id
+    2) designs integrations mapping
+    3) live Printify product scan (and backfill cache)
+    """
+    product_id = str(product_id)
     for item in store.list("printify_products"):
-        if str(item.get("shopify_product_id") or "") == str(product_id):
+        if str(item.get("shopify_product_id") or "") == product_id:
             return item
+
+    # Fallback 1: designs integrations mapping
+    for design in store.list("designs"):
+        integ = (design.get("integrations") or {}).get("printify_product") or {}
+        if str(integ.get("shopify_product_id") or "") == product_id:
+            pid = str(integ.get("id") or integ.get("_id") or "")
+            if pid:
+                # Return existing cached item by id if present, otherwise minimal handle.
+                by_id = store.get("printify_products", pid)
+                if by_id:
+                    return by_id
+                return {"id": pid, "shopify_product_id": product_id, "title": design.get("title") or ""}
+
+    # Fallback 2: scan live Printify products to find external.shopify_product_id
+    def _extract_shopify_external_id(prod: dict) -> str | None:
+        ext = prod.get("external") or {}
+        if isinstance(ext, dict):
+            candidate = ext.get("id") or ext.get("product_id")
+            if candidate:
+                return str(candidate)
+        elif isinstance(ext, str) and ext.isdigit():
+            return ext
+        return None
+
+    page = 1
+    while page <= 30:
+        try:
+            data = printify.list_products(page=page, limit=50)
+        except Exception:
+            break
+        items = data.get("data") if isinstance(data, dict) else None
+        if not isinstance(items, list) or not items:
+            break
+        for prod in items:
+            sid = _extract_shopify_external_id(prod)
+            if sid != product_id:
+                continue
+            pid = str(prod.get("id") or prod.get("_id") or "")
+            if not pid:
+                continue
+            cached = {
+                "id": pid,
+                "title": prod.get("title") or prod.get("name") or "",
+                "shopify_product_id": product_id,
+                "created_at": prod.get("created_at"),
+                "updated_at": prod.get("updated_at"),
+            }
+            try:
+                store.upsert("printify_products", pid, cached)
+            except Exception:
+                pass
+            return cached
+        current_page = int(data.get("current_page") or page)
+        last_page = int(data.get("last_page") or current_page)
+        if current_page >= last_page:
+            break
+        page += 1
     return None
 
 
@@ -1313,6 +1567,308 @@ def api_shopify_ai_description(product_id: str):
         current_app.logger.exception("AI description failed for Shopify %s", product_id)
         return jsonify({"error": str(e)}), 500
     return jsonify({"description": description})
+
+
+@bp.post("/shopify/products/<product_id>/lifestyle/prompt")
+def api_shopify_lifestyle_prompt(product_id: str):
+    body = request.get_json(silent=True) or {}
+    cached = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {}
+    title = (cached.get("title") or "").strip()
+    description = (cached.get("description") or cached.get("body_html") or "").strip()
+    garment_type = (body.get("garment_type") or cached.get("type") or "T-Shirt").strip()
+    garment_color = (body.get("garment_color") or "").strip()
+    print_location = (body.get("print_location") or "front").strip().lower()
+    person_selection = (body.get("person_selection") or "generic_female").strip()
+    age_segment = (body.get("age_segment") or "35-44").strip()
+    num_images = int(body.get("num_images") or 1)
+
+    if not garment_color:
+        return jsonify({"error": "garment_color is required"}), 400
+    if print_location not in ("front", "back"):
+        return jsonify({"error": "print_location must be front or back"}), 400
+
+    person_label = {
+        "generic_female": "Generic Female",
+        "generic_male": "Generic Male",
+    }.get(person_selection, person_selection.replace("persona:", "").replace("_", " "))
+
+    try:
+        prompt = suggest_lifestyle_prompt(
+            title=title,
+            description=description,
+            garment_type=garment_type,
+            garment_color=garment_color,
+            print_location=print_location,
+            person_selection=person_label,
+            age_segment=age_segment,
+            num_images=num_images,
+        )
+    except Exception as e:
+        current_app.logger.exception("Lifestyle prompt generation failed for Shopify %s", product_id)
+        return jsonify({"error": str(e)}), 500
+
+    # Persist last-used lifestyle controls so page reload keeps user selections.
+    existing = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {}
+    if existing:
+        existing["lifestyle_defaults"] = {
+            "garment_type": garment_type,
+            "garment_color": garment_color,
+            "print_location": print_location,
+            "person_selection": person_selection,
+            "age_segment": age_segment,
+            "num_images": max(1, min(num_images, 10)),
+        }
+        store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), existing)
+
+    return jsonify({"prompt": prompt})
+
+
+@bp.post("/shopify/products/<product_id>/lifestyle/generate")
+def api_shopify_lifestyle_generate(product_id: str):
+    body = request.get_json(silent=True) or {}
+    prompt = (body.get("prompt") or "").strip()
+    num_images = int(body.get("num_images") or 1)
+    person_selection = (body.get("person_selection") or "").strip()
+    garment_color = (body.get("garment_color") or "").strip()
+    print_location = (body.get("print_location") or "front").strip().lower()
+    garment_type = (body.get("garment_type") or "").strip()
+    age_segment = (body.get("age_segment") or "").strip()
+
+    if not prompt:
+        return jsonify({"error": "prompt is required"}), 400
+    if not garment_color:
+        return jsonify({"error": "garment_color is required"}), 400
+
+    local_refs = []
+    persona_path = _persona_key_to_local_path(person_selection)
+    if persona_path:
+        local_refs.append(persona_path)
+
+    try:
+        printify_ref_local_path, printify_ref_source_url = _resolve_printify_reference_image(
+            product_id=product_id,
+            garment_color=garment_color,
+            print_location=print_location,
+        )
+        local_refs.append(printify_ref_local_path)
+    except Exception as e:
+        current_app.logger.exception("Failed to resolve Printify reference image for Shopify %s", product_id)
+        return jsonify({"error": f"Could not prepare Printify reference image: {e}"}), 500
+
+    try:
+        generated = generate_lifestyle_images(
+            prompt,
+            num_images=max(1, min(num_images, 10)),
+            reference_local_paths=local_refs,
+            reference_urls=[],
+        )
+    except Exception as e:
+        current_app.logger.exception("Lifestyle image generation failed for Shopify %s", product_id)
+        return jsonify({"error": str(e)}), 500
+
+    _migrate_lifestyle_assets_to_data(product_id)
+    out_dir = _lifestyle_root(product_id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+    saved = []
+    image_meta = {
+        "person_selection": person_selection,
+        "garment_color": garment_color,
+        "print_location": print_location,
+        "garment_type": garment_type,
+        "age_segment": age_segment,
+        "num_images": max(1, min(num_images, 10)),
+    }
+    for i, item in enumerate(generated, start=1):
+        mime = (item.get("mime_type") or "image/png").lower()
+        ext = ".png"
+        if "jpeg" in mime or "jpg" in mime:
+            ext = ".jpg"
+        elif "webp" in mime:
+            ext = ".webp"
+        name = f"lifestyle_{stamp}_{i}{ext}"
+        target = out_dir / name
+        target.write_bytes(item["bytes"])
+        meta_path = target.with_suffix(".json")
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "prompt": prompt,
+                    "meta": image_meta,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        rel = target.relative_to(out_dir).as_posix()
+        saved.append({
+            "path": str(target),
+            "url": f"/designs/shopify-{product_id}/lifestyle/{rel}",
+            "name": target.name,
+            "prompt": prompt,
+            "meta": image_meta,
+        })
+
+    existing = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {}
+    history = existing.get("lifestyle_images") or []
+    history = history + [s["url"] for s in saved]
+    if existing:
+        existing["lifestyle_images"] = history[-100:]
+        existing["lifestyle_defaults"] = {
+            "garment_type": garment_type,
+            "garment_color": garment_color,
+            "print_location": print_location,
+            "person_selection": person_selection,
+            "age_segment": age_segment,
+            "num_images": max(1, min(num_images, 10)),
+        }
+        refs = existing.get("lifestyle_reference_images") or {}
+        refs[f"{_safe_slug(garment_color)}:{print_location}"] = {
+            "local_path": printify_ref_local_path,
+            "source_url": printify_ref_source_url,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        existing["lifestyle_reference_images"] = refs
+        store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), existing)
+
+    return jsonify({
+        "ok": True,
+        "images": saved,
+        "printify_reference": {
+            "local_path": printify_ref_local_path,
+            "source_url": printify_ref_source_url,
+        },
+    })
+
+
+@bp.post("/shopify/products/<product_id>/lifestyle/images/delete")
+def api_shopify_lifestyle_delete_images(product_id: str):
+    body = request.get_json(silent=True) or {}
+    urls = body.get("urls") or []
+    if not isinstance(urls, list) or not urls:
+        return jsonify({"error": "urls list is required"}), 400
+
+    deleted = []
+    missing = []
+    for u in urls:
+        p = _lifestyle_local_path_from_url(product_id, str(u))
+        if not p:
+            continue
+        if p.exists():
+            try:
+                p.unlink()
+                meta_path = p.with_suffix(".json")
+                if meta_path.exists():
+                    meta_path.unlink()
+                deleted.append(str(u))
+            except Exception:
+                current_app.logger.exception("Failed deleting lifestyle image %s", p)
+        else:
+            missing.append(str(u))
+
+    existing = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {}
+    if existing:
+        history = existing.get("lifestyle_images") or []
+        existing["lifestyle_images"] = [u for u in history if u not in deleted]
+        store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), existing)
+
+    return jsonify({"ok": True, "deleted": deleted, "missing": missing})
+
+
+@bp.post("/shopify/products/<product_id>/lifestyle/images/apply_to_shopify")
+def api_shopify_lifestyle_apply_to_shopify(product_id: str):
+    body = request.get_json(silent=True) or {}
+    urls = body.get("urls") or []
+    if not isinstance(urls, list) or not urls:
+        return jsonify({"error": "urls list is required"}), 400
+
+    local_files = []
+    selected_paths = []
+    for u in urls:
+        p = _lifestyle_local_path_from_url(product_id, str(u))
+        if not p or not p.exists():
+            continue
+        local_files.append(str(p))
+        selected_paths.append(p)
+
+    if not local_files:
+        return jsonify({"error": "No valid local images selected"}), 400
+
+    try:
+        uploaded = shopify.upload_product_images(product_id, local_files, webp_quality=80)
+    except Exception as e:
+        current_app.logger.exception("Failed uploading lifestyle images to Shopify %s", product_id)
+        return jsonify({"error": str(e)}), 500
+
+    uploaded_ids = []
+    for rec in uploaded:
+        img = rec.get("image") if isinstance(rec, dict) else None
+        if not img and isinstance(rec, dict):
+            img = rec
+        try:
+            iid = int((img or {}).get("id"))
+            uploaded_ids.append(iid)
+        except Exception:
+            continue
+
+    try:
+        if hasattr(shopify, "place_images_after_hero"):
+            shopify.place_images_after_hero(product_id, uploaded_ids)
+    except Exception:
+        current_app.logger.exception("Failed reordering uploaded lifestyle images for Shopify %s", product_id)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    per_file_upload_ids = {}
+    for idx, p in enumerate(selected_paths):
+        if idx < len(uploaded_ids):
+            per_file_upload_ids[str(p)] = uploaded_ids[idx]
+
+    for p in selected_paths:
+        meta_path = p.with_suffix(".json")
+        meta_doc = {}
+        if meta_path.exists():
+            try:
+                meta_doc = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                meta_doc = {}
+        shopify_meta = meta_doc.get("shopify") or {}
+        shopify_meta.update({
+            "uploaded": True,
+            "uploaded_at": now_iso,
+            "image_id": per_file_upload_ids.get(str(p)),
+        })
+        meta_doc["shopify"] = shopify_meta
+        try:
+            meta_path.write_text(json.dumps(meta_doc, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            current_app.logger.exception("Failed writing lifestyle metadata sidecar for %s", p)
+
+    refreshed = None
+    try:
+        refreshed = shopify.get_product(product_id)
+        if refreshed:
+            existing = store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {}
+            swatch_status = existing.get("swatch_mapping")
+            refreshed = _merge_swatch_mapping_status(refreshed, swatch_status)
+            if existing.get("lifestyle_images"):
+                refreshed["lifestyle_images"] = existing["lifestyle_images"]
+            if existing.get("lifestyle_reference_images"):
+                refreshed["lifestyle_reference_images"] = existing["lifestyle_reference_images"]
+            store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+    except Exception:
+        current_app.logger.exception("Failed refreshing Shopify product after lifestyle upload")
+
+    return jsonify({
+        "ok": True,
+        "uploaded_count": len(uploaded),
+        "uploaded": uploaded,
+        "uploaded_ids": uploaded_ids,
+        "uploaded_urls": urls,
+        "product": refreshed if refreshed is not None else {},
+    })
 
 
 @bp.get("/shopify/products/<product_id>/update_mockups_progress")

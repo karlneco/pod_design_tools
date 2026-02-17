@@ -233,6 +233,10 @@
                             {{ p.title }}
                         </a>
                     </h3>
+                    <p>
+                        <a href="/shopify/products/{{ p.id }}/edit" class="secondary">Edit product</a>
+                        <a href="/shopify/products/{{ p.id }}/lifestyle" class="secondary">Lifestyle images</a>
+                    </p>
                     {% if p.type %}<p><b>Type:</b> {{ p.type }}</p>{% endif %}
                     {% if p.description %}
                         <details class="desc-wrap">
