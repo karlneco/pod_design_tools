@@ -1,0 +1,14 @@
+services:
+  pod-design-tools:
+    image: pod-design-tools:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./.env
+    environment:
+      PORT: "5003"
+    volumes:
+      - ${APP_DATA_DIR:-./data}:/app/data

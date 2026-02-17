@@ -1,16 +1,11 @@
-import os
-from datetime import datetime
-
-from flask import Blueprint, request, jsonify, send_from_directory, render_template
-
-from .. import Config
-from ..extensions import store
+from flask import Blueprint, jsonify, render_template
 
 bp = Blueprint("pages", __name__)
-
-PRODUCTS_COLLECTION = "shopify_products"
 
 @bp.get("/")
 def index():
     return render_template("index.html")
 
+@bp.get("/healthz")
+def healthz():
+    return jsonify({"status": "ok"}), 200

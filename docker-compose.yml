@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  pod-design-tools:
+    build: .
+    ports:
+      - "5003:5003"
+    env_file:
+      - ${HOME}/Documents/kozakura/apps_data/pod_design_tools/.env
+    environment:
+      PORT: "5003"
+    volumes:
+      - ${HOME}/Documents/kozakura/apps_data/pod_design_tools/data:/app/data

@@ -1,0 +1,35 @@
+name: Deploy Pod Design Tools
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      no_cache:
+        description: "Rebuild Docker image with --no-cache"
+        required: false
+        default: "false"
+
+jobs:
+  deploy:
+    runs-on: docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare env file
+        env:
+          APP_DATA_DIR: /Volumes/necodata/karl/kozakura/apps_data/pod_design_tools
+        run: |
+          docker run --rm -v "${APP_DATA_DIR}:/appdata:ro" alpine sh -lc 'test -f /appdata/.env && cat /appdata/.env' > .env
+          test -s .env
+
+      - name: Deploy
+        env:
+          APP_DATA_DIR: /Volumes/necodata/karl/kozakura/apps_data/pod_design_tools/data
+        run: |
+          NO_CACHE="${{ github.event.inputs.no_cache }}"
+          NO_CACHE="${NO_CACHE:-false}"
+          chmod +x scripts/deploy_compose.sh
+          scripts/deploy_compose.sh "${NO_CACHE}"
