@@ -1,0 +1,12 @@
+{
+  "template": "assets/mockups/g64k/White.png",
+  "placements": {
+    "center": {
+      "x": 573,
+      "y": 562,
+      "max_w": 562,
+      "max_h": 562
+    }
+  },
+  "scale": 1.0
+}

@@ -1,0 +1,412 @@
+{
+  "shopify-8431129985161": {
+    "slug": "shopify-8431129985161",
+    "title": "Vending Machine Heaven - This is my Happy Place",
+    "design_png_path": "data/designs/shopify-8431129985161/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": true,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6976aec4d444bdc12b00512c",
+        "shopify_product_id": "8431129985161"
+      }
+    },
+    "assets": {
+      "mockups": [
+        "assets/product_mockups/8431129985161/White.png",
+        "assets/product_mockups/8431129985161/Black.png",
+        "assets/product_mockups/8431129985161/Light Pink.png",
+        "assets/product_mockups/8431129985161/Navy.png",
+        "assets/product_mockups/8431129985161/Sport Grey.png",
+        "assets/product_mockups/8431129985161/Military Green.png",
+        "assets/product_mockups/8431129985161/Heather Navy.png"
+      ]
+    }
+  },
+  "shopify-8427607261321": {
+    "slug": "shopify-8427607261321",
+    "title": "Nagasaki Street - Front Design Kanji",
+    "design_png_path": "data/designs/shopify-8427607261321/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": true,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "696ffd1acb1682d2be044b63",
+        "shopify_product_id": "8427607261321"
+      }
+    },
+    "assets": {
+      "mockups": [
+        "assets/product_mockups/8427607261321/Black.png",
+        "assets/product_mockups/8427607261321/Dark Heather Grey.png",
+        "assets/product_mockups/8427607261321/Heather Navy.png",
+        "assets/product_mockups/8427607261321/Light Pink.png",
+        "assets/product_mockups/8427607261321/Military Green.png",
+        "assets/product_mockups/8427607261321/Navy.png",
+        "assets/product_mockups/8427607261321/Sport Grey.png",
+        "assets/product_mockups/8427607261321/White.png"
+      ]
+    }
+  },
+  "shopify-8432556933257": {
+    "slug": "shopify-8432556933257",
+    "title": "Taisetsu Mountains of Hokkaido",
+    "design_png_path": "data/designs/shopify-8432556933257/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": true,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6977a896001f497f0a094528",
+        "shopify_product_id": "8432556933257"
+      }
+    },
+    "assets": {
+      "mockups": [
+        "assets/product_mockups/8432556933257/Heather Military Green.png",
+        "assets/product_mockups/8432556933257/White.png",
+        "assets/product_mockups/8432556933257/Sport Grey.png",
+        "assets/product_mockups/8432556933257/Military Green.png",
+        "assets/product_mockups/8432556933257/Light Pink.png",
+        "assets/product_mockups/8432556933257/Heather Navy.png",
+        "assets/product_mockups/8432556933257/Ice Grey.png",
+        "assets/product_mockups/8432556933257/Navy.png",
+        "assets/product_mockups/8432556933257/Sand.png",
+        "assets/product_mockups/8432556933257/Black.png",
+        "assets/product_mockups/8432556933257/Dark Heather Grey.png"
+      ]
+    }
+  },
+  "shopify-8426309681289": {
+    "slug": "shopify-8426309681289",
+    "title": "Nagasaki Skyline",
+    "design_png_path": "data/designs/shopify-8426309681289/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": true,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "696e7113804ad5bf5101b3a9",
+        "shopify_product_id": "8426309681289"
+      }
+    },
+    "assets": {
+      "mockups": [
+        "assets/product_mockups/8426309681289/Sport Grey.png",
+        "assets/product_mockups/8426309681289/White.png",
+        "assets/product_mockups/8426309681289/Light Pink.png",
+        "assets/product_mockups/8426309681289/Sand.png"
+      ]
+    }
+  },
+  "shopify-8437210054793": {
+    "slug": "shopify-8437210054793",
+    "title": "\"It'll Fit\" Packing Club Member Tee",
+    "design_png_path": "data/designs/shopify-8437210054793/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6980c88257cdd2717d057b22",
+        "shopify_product_id": "8437210054793"
+      }
+    }
+  },
+  "shopify-8437207826569": {
+    "slug": "shopify-8437207826569",
+    "title": "I Haven't seen all of Japan yet",
+    "design_png_path": "data/designs/shopify-8437207826569/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "698058bae134b0213301bc84",
+        "shopify_product_id": "8437207826569"
+      }
+    }
+  },
+  "shopify-8440386388105": {
+    "slug": "shopify-8440386388105",
+    "title": "T-Shirt — 'TABI' Japanese Kanji Travel Tee (TABI • Wander West) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8440386388105/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6983c590b53c4bd5560b8d66",
+        "shopify_product_id": "8440386388105"
+      }
+    }
+  },
+  "shopify-8442795163785": {
+    "slug": "shopify-8442795163785",
+    "title": "'EN' Japanese Kanji Travel Tee (EN • Connection) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8442795163785/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6986e1b84eaeae317e09c34c",
+        "shopify_product_id": "8442795163785"
+      }
+    }
+  },
+  "shopify-8442794770569": {
+    "slug": "shopify-8442794770569",
+    "title": "'HANA' Japanese Kanji Travel Tee (HANA • Soft Power) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8442794770569/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6986e4041093d329320830a5",
+        "shopify_product_id": "8442794770569"
+      }
+    }
+  },
+  "shopify-8442794737801": {
+    "slug": "shopify-8442794737801",
+    "title": "'MORI' Japanese Kanji Travel Tee (MORI • Find Your Green) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8442794737801/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6986e48291d63811f409cd77",
+        "shopify_product_id": "8442794737801"
+      }
+    }
+  },
+  "shopify-8442794508425": {
+    "slug": "shopify-8442794508425",
+    "title": "'NAMI' Japanese Kanji Travel Tee (NAMI • Ride the Moment) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8442794508425/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6986e4d55c3e2e9c7f03a60b",
+        "shopify_product_id": "8442794508425"
+      }
+    }
+  },
+  "shopify-8442794475657": {
+    "slug": "shopify-8442794475657",
+    "title": "'WA' Japanese Kanji Travel Tee (WA • Calm Energy) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8442794475657/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6986e5421093d329320830c2",
+        "shopify_product_id": "8442794475657"
+      }
+    }
+  },
+  "shopify-8442794442889": {
+    "slug": "shopify-8442794442889",
+    "title": "'YUME' Japanese Kanji Travel Tee (YUME • Keep Going) — Minimal Zen Travel Shirt",
+    "design_png_path": "data/designs/shopify-8442794442889/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "6986e5a532f975db960691b3",
+        "shopify_product_id": "8442794442889"
+      }
+    }
+  },
+  "shopify-8444239347849": {
+    "slug": "shopify-8444239347849",
+    "title": "Kamikochi Walkers T-Shirt — Japan Alps Nagano Hiking Tee",
+    "design_png_path": "data/designs/shopify-8444239347849/printify_front.png",
+    "collections": [],
+    "tags": [],
+    "notes": "",
+    "status": {
+      "mockups_generated": false,
+      "product_created_printify": false,
+      "published_shopify": false
+    },
+    "generated": {
+      "title": null,
+      "description": null,
+      "keywords": [],
+      "colors": []
+    },
+    "metadata": {},
+    "integrations": {
+      "printify_product": {
+        "id": "698a27b8759ccd31ed0a8dc1",
+        "shopify_product_id": "8444239347849"
+      }
+    }
+  }
+}

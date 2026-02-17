@@ -1,0 +1,5977 @@
+{
+  "method": "PUT",
+  "url": "https://api.printify.com/v1/shops/19085478/products/691f5aeface811c08303fa10.json",
+  "headers": {
+    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIzN2Q0YmQzMDM1ZmUxMWU5YTgwM2FiN2VlYjNjY2M5NyIsImp0aSI6IjE3NGY5NDliOTFhZmFmZjMxM2RmMzU2ZWY4N2VhOTlkOTZlZmFiYzE2YTMyNThhNDg3NTgyODNlNjRlOTc2MWM2YjgyZDc1NGQ5ZDYzNTI0IiwiaWF0IjoxNzYxMTYyNjk1Ljc2NTQyNSwibmJmIjoxNzYxMTYyNjk1Ljc2NTQyNywiZXhwIjoxNzkyNjk4Njk1Ljc1OTI2MSwic3ViIjoiMjA2MzExNzQiLCJzY29wZXMiOlsic2hvcHMubWFuYWdlIiwic2hvcHMucmVhZCIsImNhdGFsb2cucmVhZCIsIm9yZGVycy5yZWFkIiwib3JkZXJzLndyaXRlIiwicHJvZHVjdHMucmVhZCIsInByb2R1Y3RzLndyaXRlIiwid2ViaG9va3MucmVhZCIsIndlYmhvb2tzLndyaXRlIiwidXBsb2Fkcy5yZWFkIiwidXBsb2Fkcy53cml0ZSIsInByaW50X3Byb3ZpZGVycy5yZWFkIiwidXNlci5pbmZvIl19.p15jGoRGCZYHm8j9kN9iz_02HctP1qljLU4GYIcuatKypmvdvR2fu1WEznKLy2gKHPjrRAwqh12sLu_fQuUaXUbCINQyzxaW-adntYGbJRAYX-jgzxoVQmKOa69ybfaOnpsa-U6_yLVH2_6elcQQbylGSDbrbGloC6I0j1Ij9NjjOUxT8RXvwfywBIxvaRZq3aBbaN1lUFVQoLj7akRLxVd2p9vh-T6UHefx2q2G0wPi47azDjMPwSf_3LorpTtNxmC7gZPYZzlDJIdpdbxyJNOZy4CtZJw51hhIizoR6ou9ORbGsSaxBeOz5GB5DQMfXsgrtUDWS-eLLVwg_092AI6YT9ZwzW6u8t3RboqQWIASE9RNNETpoqoGns01vS2Ot1KrV7qrL-f1JyZGuELKi6UIdbc7cVTAHMYOQUS4rTH2poDvJhTyScBFOQFTzLVzZsxCbZqDWbqIXJUetVBppw7FYuIYJDWBhmQqbd9kfN8beq3-PgrvtwO6-pZyUSC5mt3RhHRg-bgObxajiIITHUJ3K2Q4XVe9S5c2_00BYL3LUhlcBAXXpoFW_e2Jea859hTIVs09cqKUJ8ROzlSbHruHtqlYwIkFnOhDsDZXLiKcMEtoRhXdgZFjtZueanRy3kYF3TIdE5E7pysgJEax5xvOESEoeiMWoAuxkkreC_4",
+    "Content-Type": "application/json"
+  },
+  "json": {
+    "title": "Merry Chri-sando-mas",
+    "description": "<h2>Festive Flavor Fusion</h2><p class='p4'>Embrace the joy of the season with a playful twist on tradition, where <span class='s2'><b>sandwiches</b></span> meet holiday cheer. This design wraps your spirit in warmth and laughter, perfect for cozy gatherings and festive feasts. 🎉🥪✨</p>",
+    "tags": [
+      "holiday",
+      "apparel",
+      "fun",
+      "foodie",
+      "celebration"
+    ],
+    "print_areas": [
+      {
+        "variant_ids": [
+          38153,
+          38154,
+          38155,
+          38156,
+          38157,
+          38158,
+          38159,
+          38160,
+          38161,
+          38162,
+          38164,
+          38165,
+          38166,
+          38167,
+          38168,
+          38169,
+          38170,
+          38171,
+          38172,
+          38173,
+          38174,
+          38175,
+          38176,
+          38178,
+          38179,
+          38180,
+          38181,
+          38182,
+          38183,
+          38184,
+          38185,
+          38186,
+          38187,
+          38188,
+          38189,
+          38190,
+          38192,
+          38193,
+          38194,
+          38195,
+          38196,
+          38197,
+          38198,
+          38199,
+          38200,
+          38201,
+          38202,
+          38203,
+          38204,
+          38206,
+          38207,
+          38208,
+          38209,
+          38210,
+          38211,
+          38212,
+          38213,
+          38214,
+          38215,
+          38216,
+          38217,
+          38218,
+          38220,
+          38221,
+          38222,
+          38223,
+          38224,
+          38225,
+          38226,
+          38227,
+          38228,
+          38229,
+          38230,
+          38231,
+          38232,
+          42109,
+          42110,
+          42111,
+          42112,
+          42113,
+          42114,
+          42115,
+          42116,
+          42117,
+          42118,
+          42119,
+          42121,
+          42122,
+          42123,
+          42124,
+          42794,
+          42795,
+          42796,
+          42797,
+          42798,
+          42799,
+          42800,
+          42801,
+          42802,
+          42803,
+          42804,
+          42805,
+          42806,
+          42807,
+          42808,
+          42809,
+          42810,
+          42811,
+          42812,
+          42813,
+          42814,
+          42815,
+          42816,
+          42817,
+          42818,
+          42819,
+          42820,
+          42821,
+          42822,
+          42823,
+          42824,
+          42825,
+          42826,
+          42827,
+          42828,
+          42829,
+          42830,
+          42831,
+          42832,
+          42833,
+          42834,
+          42835,
+          42836,
+          42837,
+          42838,
+          42839,
+          42840,
+          42841,
+          42842,
+          42843,
+          42844,
+          42845,
+          42846,
+          42847,
+          42848,
+          42849,
+          42850,
+          42851,
+          42852,
+          42853,
+          63290,
+          63291,
+          63292,
+          63293,
+          63294,
+          63295,
+          63296,
+          63297,
+          63298,
+          63299,
+          63300,
+          63301,
+          63302,
+          63303,
+          63304,
+          63305,
+          63306,
+          63307,
+          63308,
+          63309,
+          63310,
+          63311,
+          63312,
+          63313,
+          63314,
+          63315,
+          63316,
+          63317,
+          63318,
+          63319,
+          64750,
+          64751,
+          64752,
+          64753,
+          64754,
+          64756,
+          64757,
+          64758,
+          64759,
+          64760,
+          64761,
+          64762,
+          64764,
+          64765,
+          64766,
+          64767,
+          64768,
+          64769,
+          64770,
+          64772,
+          64773,
+          64774,
+          64775,
+          64776,
+          64777,
+          64778,
+          64780,
+          64781,
+          64782,
+          64783,
+          64784,
+          64785,
+          64786,
+          64788,
+          64789,
+          64790,
+          64791,
+          64792,
+          64793,
+          64794,
+          64796,
+          64797,
+          66186,
+          66188,
+          66190,
+          66191,
+          66192,
+          66193,
+          66197,
+          66200,
+          66203,
+          66205,
+          66206,
+          66207,
+          66208,
+          66210,
+          66213,
+          66214,
+          66218,
+          66221,
+          66241,
+          66242,
+          66243,
+          66244,
+          66245,
+          66246,
+          66329,
+          66330,
+          66331,
+          66332,
+          66333,
+          66334,
+          66371,
+          66372,
+          66373,
+          66374,
+          66375,
+          66376,
+          67435,
+          67436,
+          67437,
+          67438,
+          67439,
+          67440,
+          67441,
+          67442,
+          67443,
+          67444,
+          67445,
+          67446,
+          67447,
+          67448,
+          67449,
+          67450,
+          67451,
+          67452,
+          67453,
+          67454,
+          67455,
+          67456,
+          67457,
+          67458,
+          67459,
+          67460,
+          67461,
+          67462,
+          67463,
+          67464,
+          67802,
+          67806,
+          67809,
+          67819,
+          67823,
+          67824,
+          67827,
+          67831,
+          67839,
+          68756,
+          68757,
+          68758,
+          68759,
+          68764,
+          68765,
+          68766,
+          68767,
+          68770,
+          68771,
+          68772,
+          68773,
+          68776,
+          68777,
+          68778,
+          68779,
+          68782,
+          68783,
+          68784,
+          68785,
+          68788,
+          68789,
+          68790,
+          68791,
+          93309,
+          93310,
+          93311,
+          93312,
+          93313,
+          93314,
+          94869,
+          94870,
+          94871,
+          94872,
+          94873,
+          94874,
+          95143,
+          95148,
+          95152,
+          95166,
+          95170,
+          95171,
+          95176,
+          95180,
+          104684,
+          104685,
+          104686,
+          104687,
+          104688,
+          104689,
+          104690,
+          104691,
+          105180,
+          105203,
+          105204,
+          105205,
+          105206,
+          105207,
+          105208,
+          105212,
+          105213,
+          105214,
+          105215,
+          105216,
+          105217,
+          105221,
+          105222,
+          105223,
+          105224,
+          105225,
+          105226,
+          105230,
+          105231,
+          105232,
+          105233,
+          105234,
+          105235,
+          105239,
+          105240,
+          105241,
+          105242,
+          105243,
+          105244,
+          105248,
+          105249,
+          105250,
+          105251,
+          105252,
+          105253,
+          105257,
+          105258,
+          105259,
+          105260,
+          105261,
+          105262,
+          105266,
+          105267,
+          105268,
+          105269,
+          105270,
+          105271,
+          105275,
+          105276,
+          105277,
+          105278,
+          105279,
+          105280,
+          105284,
+          105285,
+          105286,
+          105287,
+          105288,
+          105289
+        ],
+        "placeholders": [
+          {
+            "position": "front",
+            "images": [
+              {
+                "id": "691f5b855c1545b8d0ff9a37",
+                "x": 0.5,
+                "y": 0.5,
+                "scale": 1.1375559820857382,
+                "angle": 0
+              }
+            ]
+          },
+          {
+            "position": "neck",
+            "images": [
+              {
+                "id": "68faffc792143382282f3002",
+                "x": 0.5,
+                "y": 0.29419525065963065,
+                "scale": 1.0,
+                "angle": 0
+              }
+            ],
+            "decoration_method": "dtf"
+          },
+          {
+            "position": "neck",
+            "images": [
+              {
+                "id": "68faffc792143382282f3002",
+                "x": 0.5,
+                "y": 0.29419525065963065,
+                "scale": 1.0,
+                "angle": 0
+              }
+            ],
+            "decoration_method": "dtf"
+          }
+        ]
+      },
+      {
+        "variant_ids": [
+          38163,
+          38177,
+          38191,
+          38205,
+          38219,
+          42120,
+          66211,
+          67829,
+          95175
+        ],
+        "placeholders": [
+          {
+            "position": "front",
+            "images": [
+              {
+                "id": "691f5b889edfffb174da077b",
+                "x": 0.5,
+                "y": 0.5,
+                "scale": 1.1375559820857382,
+                "angle": 0
+              }
+            ]
+          },
+          {
+            "position": "neck",
+            "images": [
+              {
+                "id": "68faffc792143382282f3002",
+                "x": 0.5,
+                "y": 0.29419525065963065,
+                "scale": 1.0,
+                "angle": 0
+              }
+            ],
+            "decoration_method": "dtf"
+          },
+          {
+            "position": "neck",
+            "images": [
+              {
+                "id": "68faffc792143382282f3002",
+                "x": 0.5,
+                "y": 0.29419525065963065,
+                "scale": 1.0,
+                "angle": 0
+              }
+            ],
+            "decoration_method": "dtf"
+          }
+        ]
+      }
+    ],
+    "variants": [
+      {
+        "price": 812,
+        "id": 38153,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Charcoal / S",
+        "options": [
+          424,
+          14
+        ],
+        "sku": "11792587693602764619"
+      },
+      {
+        "price": 812,
+        "id": 38154,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Daisy / S",
+        "options": [
+          359,
+          14
+        ],
+        "sku": "25259740563070874556"
+      },
+      {
+        "price": 843,
+        "id": 38155,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Dark Chocolate / S",
+        "options": [
+          362,
+          14
+        ],
+        "sku": "25928792323192275766"
+      },
+      {
+        "price": 812,
+        "id": 38156,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Irish Green / S",
+        "options": [
+          369,
+          14
+        ],
+        "sku": "22298786135341722172"
+      },
+      {
+        "price": 812,
+        "id": 38157,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Light Blue / S",
+        "options": [
+          392,
+          14
+        ],
+        "sku": "32353055501503691248"
+      },
+      {
+        "price": 2999,
+        "id": 38158,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 111,
+        "title": "Navy / S",
+        "options": [
+          511,
+          14
+        ],
+        "sku": "58650218363345892248"
+      },
+      {
+        "price": 843,
+        "id": 38159,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Purple / S",
+        "options": [
+          398,
+          14
+        ],
+        "sku": "23454348459008157319"
+      },
+      {
+        "price": 812,
+        "id": 38160,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Red / S",
+        "options": [
+          423,
+          14
+        ],
+        "sku": "15252483743406186814"
+      },
+      {
+        "price": 812,
+        "id": 38161,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Royal / S",
+        "options": [
+          425,
+          14
+        ],
+        "sku": "31399503868689968487"
+      },
+      {
+        "price": 2999,
+        "id": 38162,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Sport Grey / S",
+        "options": [
+          358,
+          14
+        ],
+        "sku": "12845901329287189829"
+      },
+      {
+        "price": 2999,
+        "id": 38163,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 111,
+        "title": "White / S",
+        "options": [
+          521,
+          14
+        ],
+        "sku": "32875935284056475065"
+      },
+      {
+        "price": 2999,
+        "id": 38164,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 111,
+        "title": "Black / S",
+        "options": [
+          418,
+          14
+        ],
+        "sku": "27474437607988450673"
+      },
+      {
+        "price": 843,
+        "id": 38165,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Forest Green / S",
+        "options": [
+          416,
+          14
+        ],
+        "sku": "36209055243287859602"
+      },
+      {
+        "price": 2999,
+        "id": 38166,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 111,
+        "title": "Military Green / S",
+        "options": [
+          364,
+          14
+        ],
+        "sku": "70636896320592879208"
+      },
+      {
+        "price": 812,
+        "id": 38167,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Charcoal / M",
+        "options": [
+          424,
+          15
+        ],
+        "sku": "18307445670253214848"
+      },
+      {
+        "price": 812,
+        "id": 38168,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Daisy / M",
+        "options": [
+          359,
+          15
+        ],
+        "sku": "30225993717614015148"
+      },
+      {
+        "price": 843,
+        "id": 38169,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Dark Chocolate / M",
+        "options": [
+          362,
+          15
+        ],
+        "sku": "23353074031909683060"
+      },
+      {
+        "price": 812,
+        "id": 38170,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Irish Green / M",
+        "options": [
+          369,
+          15
+        ],
+        "sku": "18709917030909359890"
+      },
+      {
+        "price": 812,
+        "id": 38171,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Light Blue / M",
+        "options": [
+          392,
+          15
+        ],
+        "sku": "20718811523482831179"
+      },
+      {
+        "price": 2999,
+        "id": 38172,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 120,
+        "title": "Navy / M",
+        "options": [
+          511,
+          15
+        ],
+        "sku": "28195385732536605482"
+      },
+      {
+        "price": 843,
+        "id": 38173,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Purple / M",
+        "options": [
+          398,
+          15
+        ],
+        "sku": "13567069835057813386"
+      },
+      {
+        "price": 812,
+        "id": 38174,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Red / M",
+        "options": [
+          423,
+          15
+        ],
+        "sku": "14689139924787945776"
+      },
+      {
+        "price": 812,
+        "id": 38175,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Royal / M",
+        "options": [
+          425,
+          15
+        ],
+        "sku": "22450302579259788743"
+      },
+      {
+        "price": 2999,
+        "id": 38176,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Sport Grey / M",
+        "options": [
+          358,
+          15
+        ],
+        "sku": "86181733685689185723"
+      },
+      {
+        "price": 2999,
+        "id": 38177,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 120,
+        "title": "White / M",
+        "options": [
+          521,
+          15
+        ],
+        "sku": "27596646151076762485"
+      },
+      {
+        "price": 2999,
+        "id": 38178,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 120,
+        "title": "Black / M",
+        "options": [
+          418,
+          15
+        ],
+        "sku": "55477147975205309719"
+      },
+      {
+        "price": 843,
+        "id": 38179,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Forest Green / M",
+        "options": [
+          416,
+          15
+        ],
+        "sku": "31780835134990017500"
+      },
+      {
+        "price": 2999,
+        "id": 38180,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 120,
+        "title": "Military Green / M",
+        "options": [
+          364,
+          15
+        ],
+        "sku": "12526848649918833971"
+      },
+      {
+        "price": 812,
+        "id": 38181,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Charcoal / L",
+        "options": [
+          424,
+          16
+        ],
+        "sku": "14869799660038719813"
+      },
+      {
+        "price": 812,
+        "id": 38182,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Daisy / L",
+        "options": [
+          359,
+          16
+        ],
+        "sku": "41810862569444202684"
+      },
+      {
+        "price": 843,
+        "id": 38183,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Dark Chocolate / L",
+        "options": [
+          362,
+          16
+        ],
+        "sku": "31783016729527016115"
+      },
+      {
+        "price": 812,
+        "id": 38184,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Irish Green / L",
+        "options": [
+          369,
+          16
+        ],
+        "sku": "16690888138481907725"
+      },
+      {
+        "price": 812,
+        "id": 38185,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Light Blue / L",
+        "options": [
+          392,
+          16
+        ],
+        "sku": "22361120946092856374"
+      },
+      {
+        "price": 2999,
+        "id": 38186,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 140,
+        "title": "Navy / L",
+        "options": [
+          511,
+          16
+        ],
+        "sku": "17277867189676814095"
+      },
+      {
+        "price": 843,
+        "id": 38187,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Purple / L",
+        "options": [
+          398,
+          16
+        ],
+        "sku": "22898471401865909607"
+      },
+      {
+        "price": 812,
+        "id": 38188,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Red / L",
+        "options": [
+          423,
+          16
+        ],
+        "sku": "17097455970127553390"
+      },
+      {
+        "price": 812,
+        "id": 38189,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Royal / L",
+        "options": [
+          425,
+          16
+        ],
+        "sku": "18284036768628411240"
+      },
+      {
+        "price": 2999,
+        "id": 38190,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Sport Grey / L",
+        "options": [
+          358,
+          16
+        ],
+        "sku": "95659130759671524689"
+      },
+      {
+        "price": 2999,
+        "id": 38191,
+        "is_default": true,
+        "is_enabled": true,
+        "grams": 140,
+        "title": "White / L",
+        "options": [
+          521,
+          16
+        ],
+        "sku": "33790508055496075600"
+      },
+      {
+        "price": 2999,
+        "id": 38192,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 140,
+        "title": "Black / L",
+        "options": [
+          418,
+          16
+        ],
+        "sku": "11948879978648200693"
+      },
+      {
+        "price": 843,
+        "id": 38193,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Forest Green / L",
+        "options": [
+          416,
+          16
+        ],
+        "sku": "27880622175165626451"
+      },
+      {
+        "price": 2999,
+        "id": 38194,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 140,
+        "title": "Military Green / L",
+        "options": [
+          364,
+          16
+        ],
+        "sku": "29160970080985652955"
+      },
+      {
+        "price": 812,
+        "id": 38195,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Charcoal / XL",
+        "options": [
+          424,
+          17
+        ],
+        "sku": "10907514599790417421"
+      },
+      {
+        "price": 812,
+        "id": 38196,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Daisy / XL",
+        "options": [
+          359,
+          17
+        ],
+        "sku": "12114228611758037040"
+      },
+      {
+        "price": 843,
+        "id": 38197,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Dark Chocolate / XL",
+        "options": [
+          362,
+          17
+        ],
+        "sku": "17438671764607870710"
+      },
+      {
+        "price": 812,
+        "id": 38198,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Irish Green / XL",
+        "options": [
+          369,
+          17
+        ],
+        "sku": "87096980520963003697"
+      },
+      {
+        "price": 812,
+        "id": 38199,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Light Blue / XL",
+        "options": [
+          392,
+          17
+        ],
+        "sku": "27647434403758649016"
+      },
+      {
+        "price": 2999,
+        "id": 38200,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 160,
+        "title": "Navy / XL",
+        "options": [
+          511,
+          17
+        ],
+        "sku": "31834621584110948303"
+      },
+      {
+        "price": 843,
+        "id": 38201,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Purple / XL",
+        "options": [
+          398,
+          17
+        ],
+        "sku": "26893043728648986297"
+      },
+      {
+        "price": 812,
+        "id": 38202,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Red / XL",
+        "options": [
+          423,
+          17
+        ],
+        "sku": "22201900841516412749"
+      },
+      {
+        "price": 812,
+        "id": 38203,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Royal / XL",
+        "options": [
+          425,
+          17
+        ],
+        "sku": "19517341143264970850"
+      },
+      {
+        "price": 2999,
+        "id": 38204,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Sport Grey / XL",
+        "options": [
+          358,
+          17
+        ],
+        "sku": "33373941145135561326"
+      },
+      {
+        "price": 2999,
+        "id": 38205,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 160,
+        "title": "White / XL",
+        "options": [
+          521,
+          17
+        ],
+        "sku": "28074072845320192648"
+      },
+      {
+        "price": 2999,
+        "id": 38206,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 160,
+        "title": "Black / XL",
+        "options": [
+          418,
+          17
+        ],
+        "sku": "20083136039107983584"
+      },
+      {
+        "price": 843,
+        "id": 38207,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Forest Green / XL",
+        "options": [
+          416,
+          17
+        ],
+        "sku": "33007922635083512438"
+      },
+      {
+        "price": 2999,
+        "id": 38208,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 160,
+        "title": "Military Green / XL",
+        "options": [
+          364,
+          17
+        ],
+        "sku": "20049761719597283538"
+      },
+      {
+        "price": 1050,
+        "id": 38209,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Charcoal / 2XL",
+        "options": [
+          424,
+          18
+        ],
+        "sku": "33277540064062365421"
+      },
+      {
+        "price": 1050,
+        "id": 38210,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Daisy / 2XL",
+        "options": [
+          359,
+          18
+        ],
+        "sku": "12011296326677378625"
+      },
+      {
+        "price": 1082,
+        "id": 38211,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Dark Chocolate / 2XL",
+        "options": [
+          362,
+          18
+        ],
+        "sku": "17169953351175942919"
+      },
+      {
+        "price": 1050,
+        "id": 38212,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Irish Green / 2XL",
+        "options": [
+          369,
+          18
+        ],
+        "sku": "16352034015417541790"
+      },
+      {
+        "price": 1050,
+        "id": 38213,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Light Blue / 2XL",
+        "options": [
+          392,
+          18
+        ],
+        "sku": "28957087887604236350"
+      },
+      {
+        "price": 3099,
+        "id": 38214,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 180,
+        "title": "Navy / 2XL",
+        "options": [
+          511,
+          18
+        ],
+        "sku": "15588861075078432058"
+      },
+      {
+        "price": 1082,
+        "id": 38215,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Purple / 2XL",
+        "options": [
+          398,
+          18
+        ],
+        "sku": "13011082500824424756"
+      },
+      {
+        "price": 1050,
+        "id": 38216,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Red / 2XL",
+        "options": [
+          423,
+          18
+        ],
+        "sku": "99151979069815854856"
+      },
+      {
+        "price": 1050,
+        "id": 38217,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Royal / 2XL",
+        "options": [
+          425,
+          18
+        ],
+        "sku": "26383979124224753770"
+      },
+      {
+        "price": 3099,
+        "id": 38218,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Sport Grey / 2XL",
+        "options": [
+          358,
+          18
+        ],
+        "sku": "24094891053478033998"
+      },
+      {
+        "price": 3099,
+        "id": 38219,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 180,
+        "title": "White / 2XL",
+        "options": [
+          521,
+          18
+        ],
+        "sku": "72734916683538355565"
+      },
+      {
+        "price": 3099,
+        "id": 38220,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 180,
+        "title": "Black / 2XL",
+        "options": [
+          418,
+          18
+        ],
+        "sku": "12563407289805066955"
+      },
+      {
+        "price": 1082,
+        "id": 38221,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Forest Green / 2XL",
+        "options": [
+          416,
+          18
+        ],
+        "sku": "13149664081436185501"
+      },
+      {
+        "price": 3099,
+        "id": 38222,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 180,
+        "title": "Military Green / 2XL",
+        "options": [
+          364,
+          18
+        ],
+        "sku": "14973400919499338917"
+      },
+      {
+        "price": 843,
+        "id": 38223,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Cornsilk / S",
+        "options": [
+          386,
+          14
+        ],
+        "sku": "18963290819789071212"
+      },
+      {
+        "price": 843,
+        "id": 38224,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Azalea / S",
+        "options": [
+          513,
+          14
+        ],
+        "sku": "30477211604586647346"
+      },
+      {
+        "price": 843,
+        "id": 38225,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Cornsilk / M",
+        "options": [
+          386,
+          15
+        ],
+        "sku": "18285126161619158921"
+      },
+      {
+        "price": 843,
+        "id": 38226,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Azalea / M",
+        "options": [
+          513,
+          15
+        ],
+        "sku": "15824573580481360772"
+      },
+      {
+        "price": 843,
+        "id": 38227,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Cornsilk / L",
+        "options": [
+          386,
+          16
+        ],
+        "sku": "18103618323265084314"
+      },
+      {
+        "price": 843,
+        "id": 38228,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Azalea / L",
+        "options": [
+          513,
+          16
+        ],
+        "sku": "41742418542346566378"
+      },
+      {
+        "price": 843,
+        "id": 38229,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Cornsilk / XL",
+        "options": [
+          386,
+          17
+        ],
+        "sku": "27178210564431065957"
+      },
+      {
+        "price": 843,
+        "id": 38230,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Azalea / XL",
+        "options": [
+          513,
+          17
+        ],
+        "sku": "42432599864031707152"
+      },
+      {
+        "price": 1082,
+        "id": 38231,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Cornsilk / 2XL",
+        "options": [
+          386,
+          18
+        ],
+        "sku": "25453050751012386585"
+      },
+      {
+        "price": 1082,
+        "id": 38232,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Azalea / 2XL",
+        "options": [
+          513,
+          18
+        ],
+        "sku": "17563959906508992767"
+      },
+      {
+        "price": 1252,
+        "id": 42109,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Charcoal / 3XL",
+        "options": [
+          424,
+          19
+        ],
+        "sku": "70229261362840745133"
+      },
+      {
+        "price": 1283,
+        "id": 42110,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Cornsilk / 3XL",
+        "options": [
+          386,
+          19
+        ],
+        "sku": "33603413580422035633"
+      },
+      {
+        "price": 1252,
+        "id": 42111,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Daisy / 3XL",
+        "options": [
+          359,
+          19
+        ],
+        "sku": "25617078000544307634"
+      },
+      {
+        "price": 1283,
+        "id": 42112,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Dark Chocolate / 3XL",
+        "options": [
+          362,
+          19
+        ],
+        "sku": "47880170450702245999"
+      },
+      {
+        "price": 1252,
+        "id": 42113,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Irish Green / 3XL",
+        "options": [
+          369,
+          19
+        ],
+        "sku": "32406879432763499433"
+      },
+      {
+        "price": 1252,
+        "id": 42114,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Light Blue / 3XL",
+        "options": [
+          392,
+          19
+        ],
+        "sku": "35064234739756932280"
+      },
+      {
+        "price": 3199,
+        "id": 42115,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 200,
+        "title": "Navy / 3XL",
+        "options": [
+          511,
+          19
+        ],
+        "sku": "83343560551393821962"
+      },
+      {
+        "price": 1283,
+        "id": 42116,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Purple / 3XL",
+        "options": [
+          398,
+          19
+        ],
+        "sku": "24287425891695356050"
+      },
+      {
+        "price": 1252,
+        "id": 42117,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Red / 3XL",
+        "options": [
+          423,
+          19
+        ],
+        "sku": "14458361772136352872"
+      },
+      {
+        "price": 1252,
+        "id": 42118,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Royal / 3XL",
+        "options": [
+          425,
+          19
+        ],
+        "sku": "20100425415506395156"
+      },
+      {
+        "price": 3199,
+        "id": 42119,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Sport Grey / 3XL",
+        "options": [
+          358,
+          19
+        ],
+        "sku": "26230598667440453328"
+      },
+      {
+        "price": 3199,
+        "id": 42120,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 200,
+        "title": "White / 3XL",
+        "options": [
+          521,
+          19
+        ],
+        "sku": "13627363508334042147"
+      },
+      {
+        "price": 1283,
+        "id": 42121,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Azalea / 3XL",
+        "options": [
+          513,
+          19
+        ],
+        "sku": "17804622367696501165"
+      },
+      {
+        "price": 3199,
+        "id": 42122,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 200,
+        "title": "Black / 3XL",
+        "options": [
+          418,
+          19
+        ],
+        "sku": "33792661155074621650"
+      },
+      {
+        "price": 1283,
+        "id": 42123,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Forest Green / 3XL",
+        "options": [
+          416,
+          19
+        ],
+        "sku": "28949882914513163465"
+      },
+      {
+        "price": 3199,
+        "id": 42124,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 200,
+        "title": "Military Green / 3XL",
+        "options": [
+          364,
+          19
+        ],
+        "sku": "27961985847165955285"
+      },
+      {
+        "price": 843,
+        "id": 42794,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Antique Sapphire / S",
+        "options": [
+          391,
+          14
+        ],
+        "sku": "33459781665051943647"
+      },
+      {
+        "price": 843,
+        "id": 42795,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Antique Heliconia / S",
+        "options": [
+          375,
+          14
+        ],
+        "sku": "14913102270248167958"
+      },
+      {
+        "price": 843,
+        "id": 42796,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Orange / S",
+        "options": [
+          420,
+          14
+        ],
+        "sku": "18350897451988605591"
+      },
+      {
+        "price": 843,
+        "id": 42797,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Antique Sapphire / M",
+        "options": [
+          391,
+          15
+        ],
+        "sku": "20061315024536218059"
+      },
+      {
+        "price": 843,
+        "id": 42798,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Antique Heliconia / M",
+        "options": [
+          375,
+          15
+        ],
+        "sku": "28063723420251915505"
+      },
+      {
+        "price": 843,
+        "id": 42799,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Orange / M",
+        "options": [
+          420,
+          15
+        ],
+        "sku": "24094134940710509231"
+      },
+      {
+        "price": 843,
+        "id": 42800,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Antique Sapphire / L",
+        "options": [
+          391,
+          16
+        ],
+        "sku": "12643768234505811950"
+      },
+      {
+        "price": 843,
+        "id": 42801,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Antique Heliconia / L",
+        "options": [
+          375,
+          16
+        ],
+        "sku": "87724315098525010669"
+      },
+      {
+        "price": 843,
+        "id": 42802,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Orange / L",
+        "options": [
+          420,
+          16
+        ],
+        "sku": "51524239251159971905"
+      },
+      {
+        "price": 843,
+        "id": 42803,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Antique Sapphire / XL",
+        "options": [
+          391,
+          17
+        ],
+        "sku": "32812476276888514246"
+      },
+      {
+        "price": 843,
+        "id": 42804,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Antique Heliconia / XL",
+        "options": [
+          375,
+          17
+        ],
+        "sku": "20576925432524911202"
+      },
+      {
+        "price": 843,
+        "id": 42805,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Orange / XL",
+        "options": [
+          420,
+          17
+        ],
+        "sku": "24764441955929699162"
+      },
+      {
+        "price": 1082,
+        "id": 42806,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Antique Sapphire / 2XL",
+        "options": [
+          391,
+          18
+        ],
+        "sku": "88049161900252125152"
+      },
+      {
+        "price": 1082,
+        "id": 42807,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Antique Heliconia / 2XL",
+        "options": [
+          375,
+          18
+        ],
+        "sku": "26568803720592818960"
+      },
+      {
+        "price": 1082,
+        "id": 42808,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Orange / 2XL",
+        "options": [
+          420,
+          18
+        ],
+        "sku": "58218635537369841615"
+      },
+      {
+        "price": 1283,
+        "id": 42809,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Antique Sapphire / 3XL",
+        "options": [
+          391,
+          19
+        ],
+        "sku": "11558626171636486747"
+      },
+      {
+        "price": 1283,
+        "id": 42810,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Antique Heliconia / 3XL",
+        "options": [
+          375,
+          19
+        ],
+        "sku": "14820192812212972515"
+      },
+      {
+        "price": 1283,
+        "id": 42811,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Orange / 3XL",
+        "options": [
+          420,
+          19
+        ],
+        "sku": "39396594371810426792"
+      },
+      {
+        "price": 843,
+        "id": 42812,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Cardinal Red / S",
+        "options": [
+          430,
+          14
+        ],
+        "sku": "21791775175605509732"
+      },
+      {
+        "price": 843,
+        "id": 42813,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Cardinal Red / M",
+        "options": [
+          430,
+          15
+        ],
+        "sku": "16958473882184173613"
+      },
+      {
+        "price": 843,
+        "id": 42814,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Cardinal Red / L",
+        "options": [
+          430,
+          16
+        ],
+        "sku": "11777412674046927055"
+      },
+      {
+        "price": 843,
+        "id": 42815,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Cardinal Red / XL",
+        "options": [
+          430,
+          17
+        ],
+        "sku": "30717415170492019275"
+      },
+      {
+        "price": 1082,
+        "id": 42816,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Cardinal Red / 2XL",
+        "options": [
+          430,
+          18
+        ],
+        "sku": "24094180359034913389"
+      },
+      {
+        "price": 1283,
+        "id": 42817,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Cardinal Red / 3XL",
+        "options": [
+          430,
+          19
+        ],
+        "sku": "16066477382711457784"
+      },
+      {
+        "price": 2999,
+        "id": 42818,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 111,
+        "title": "Heather Navy / S",
+        "options": [
+          550,
+          14
+        ],
+        "sku": "11856316042279788980"
+      },
+      {
+        "price": 843,
+        "id": 42819,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Purple / S",
+        "options": [
+          510,
+          14
+        ],
+        "sku": "25421947965953639326"
+      },
+      {
+        "price": 843,
+        "id": 42820,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Red / S",
+        "options": [
+          508,
+          14
+        ],
+        "sku": "26140819070935298404"
+      },
+      {
+        "price": 843,
+        "id": 42821,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Sapphire / S",
+        "options": [
+          436,
+          14
+        ],
+        "sku": "17221931255461563323"
+      },
+      {
+        "price": 843,
+        "id": 42822,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Irish Green / S",
+        "options": [
+          527,
+          14
+        ],
+        "sku": "33342083504870195309"
+      },
+      {
+        "price": 843,
+        "id": 42823,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Royal / S",
+        "options": [
+          514,
+          14
+        ],
+        "sku": "26931811778617568702"
+      },
+      {
+        "price": 2999,
+        "id": 42824,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 120,
+        "title": "Heather Navy / M",
+        "options": [
+          550,
+          15
+        ],
+        "sku": "83751784211256649649"
+      },
+      {
+        "price": 843,
+        "id": 42825,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Purple / M",
+        "options": [
+          510,
+          15
+        ],
+        "sku": "13570846542996069095"
+      },
+      {
+        "price": 843,
+        "id": 42826,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Red / M",
+        "options": [
+          508,
+          15
+        ],
+        "sku": "16934583016296006065"
+      },
+      {
+        "price": 843,
+        "id": 42827,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Sapphire / M",
+        "options": [
+          436,
+          15
+        ],
+        "sku": "15204673660506834232"
+      },
+      {
+        "price": 843,
+        "id": 42828,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Irish Green / M",
+        "options": [
+          527,
+          15
+        ],
+        "sku": "66183853930677896125"
+      },
+      {
+        "price": 843,
+        "id": 42829,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Royal / M",
+        "options": [
+          514,
+          15
+        ],
+        "sku": "58631195891388494282"
+      },
+      {
+        "price": 2999,
+        "id": 42830,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 140,
+        "title": "Heather Navy / L",
+        "options": [
+          550,
+          16
+        ],
+        "sku": "12569014341960684241"
+      },
+      {
+        "price": 843,
+        "id": 42831,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Purple / L",
+        "options": [
+          510,
+          16
+        ],
+        "sku": "32685932977161347279"
+      },
+      {
+        "price": 843,
+        "id": 42832,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Red / L",
+        "options": [
+          508,
+          16
+        ],
+        "sku": "58994698071955784179"
+      },
+      {
+        "price": 843,
+        "id": 42833,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Sapphire / L",
+        "options": [
+          436,
+          16
+        ],
+        "sku": "12500544003019600938"
+      },
+      {
+        "price": 843,
+        "id": 42834,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Irish Green / L",
+        "options": [
+          527,
+          16
+        ],
+        "sku": "16770697892436539960"
+      },
+      {
+        "price": 843,
+        "id": 42835,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Royal / L",
+        "options": [
+          514,
+          16
+        ],
+        "sku": "28149121800231558218"
+      },
+      {
+        "price": 2999,
+        "id": 42836,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 160,
+        "title": "Heather Navy / XL",
+        "options": [
+          550,
+          17
+        ],
+        "sku": "20150156268587123680"
+      },
+      {
+        "price": 843,
+        "id": 42837,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Purple / XL",
+        "options": [
+          510,
+          17
+        ],
+        "sku": "13939648321370733353"
+      },
+      {
+        "price": 843,
+        "id": 42838,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Red / XL",
+        "options": [
+          508,
+          17
+        ],
+        "sku": "62919228304662196421"
+      },
+      {
+        "price": 843,
+        "id": 42839,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Sapphire / XL",
+        "options": [
+          436,
+          17
+        ],
+        "sku": "89329978661896286481"
+      },
+      {
+        "price": 843,
+        "id": 42840,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Irish Green / XL",
+        "options": [
+          527,
+          17
+        ],
+        "sku": "31960331487394289333"
+      },
+      {
+        "price": 843,
+        "id": 42841,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Royal / XL",
+        "options": [
+          514,
+          17
+        ],
+        "sku": "36811528438522545106"
+      },
+      {
+        "price": 3099,
+        "id": 42842,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 180,
+        "title": "Heather Navy / 2XL",
+        "options": [
+          550,
+          18
+        ],
+        "sku": "30608677636117252703"
+      },
+      {
+        "price": 1082,
+        "id": 42843,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Purple / 2XL",
+        "options": [
+          510,
+          18
+        ],
+        "sku": "79956271551555947286"
+      },
+      {
+        "price": 1082,
+        "id": 42844,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Red / 2XL",
+        "options": [
+          508,
+          18
+        ],
+        "sku": "16598087344465014520"
+      },
+      {
+        "price": 1082,
+        "id": 42845,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Sapphire / 2XL",
+        "options": [
+          436,
+          18
+        ],
+        "sku": "21632011393419271068"
+      },
+      {
+        "price": 1082,
+        "id": 42846,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Irish Green / 2XL",
+        "options": [
+          527,
+          18
+        ],
+        "sku": "14878235412935005623"
+      },
+      {
+        "price": 1082,
+        "id": 42847,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Royal / 2XL",
+        "options": [
+          514,
+          18
+        ],
+        "sku": "19468555235954456621"
+      },
+      {
+        "price": 3199,
+        "id": 42848,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 200,
+        "title": "Heather Navy / 3XL",
+        "options": [
+          550,
+          19
+        ],
+        "sku": "21874561539650657440"
+      },
+      {
+        "price": 1283,
+        "id": 42849,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Purple / 3XL",
+        "options": [
+          510,
+          19
+        ],
+        "sku": "11786047579215890130"
+      },
+      {
+        "price": 1283,
+        "id": 42850,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Red / 3XL",
+        "options": [
+          508,
+          19
+        ],
+        "sku": "17378892391928447380"
+      },
+      {
+        "price": 1283,
+        "id": 42851,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Sapphire / 3XL",
+        "options": [
+          436,
+          19
+        ],
+        "sku": "14648228569999354065"
+      },
+      {
+        "price": 1283,
+        "id": 42852,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Irish Green / 3XL",
+        "options": [
+          527,
+          19
+        ],
+        "sku": "24360950737432359602"
+      },
+      {
+        "price": 1283,
+        "id": 42853,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Royal / 3XL",
+        "options": [
+          514,
+          19
+        ],
+        "sku": "14784912372876625954"
+      },
+      {
+        "price": 812,
+        "id": 63290,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Dark Heather / S",
+        "options": [
+          367,
+          14
+        ],
+        "sku": "23968531228994768887"
+      },
+      {
+        "price": 843,
+        "id": 63291,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Kelly Green / S",
+        "options": [
+          435,
+          14
+        ],
+        "sku": "16967082216574080317"
+      },
+      {
+        "price": 843,
+        "id": 63292,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Maroon / S",
+        "options": [
+          395,
+          14
+        ],
+        "sku": "19965142988639043228"
+      },
+      {
+        "price": 843,
+        "id": 63293,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Natural / S",
+        "options": [
+          552,
+          14
+        ],
+        "sku": "33724824853130582884"
+      },
+      {
+        "price": 843,
+        "id": 63294,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Gold / S",
+        "options": [
+          438,
+          14
+        ],
+        "sku": "73166707037032278130"
+      },
+      {
+        "price": 812,
+        "id": 63295,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Dark Heather / M",
+        "options": [
+          367,
+          15
+        ],
+        "sku": "12412456341177879491"
+      },
+      {
+        "price": 843,
+        "id": 63296,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Kelly Green / M",
+        "options": [
+          435,
+          15
+        ],
+        "sku": "30833210315126207359"
+      },
+      {
+        "price": 843,
+        "id": 63297,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Maroon / M",
+        "options": [
+          395,
+          15
+        ],
+        "sku": "32574229390515234846"
+      },
+      {
+        "price": 843,
+        "id": 63298,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Natural / M",
+        "options": [
+          552,
+          15
+        ],
+        "sku": "99950608887075579492"
+      },
+      {
+        "price": 843,
+        "id": 63299,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Gold / M",
+        "options": [
+          438,
+          15
+        ],
+        "sku": "16177792760883351172"
+      },
+      {
+        "price": 812,
+        "id": 63300,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Dark Heather / L",
+        "options": [
+          367,
+          16
+        ],
+        "sku": "11777581785422456141"
+      },
+      {
+        "price": 843,
+        "id": 63301,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Kelly Green / L",
+        "options": [
+          435,
+          16
+        ],
+        "sku": "31335711728144703436"
+      },
+      {
+        "price": 843,
+        "id": 63302,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Maroon / L",
+        "options": [
+          395,
+          16
+        ],
+        "sku": "46942513929969584674"
+      },
+      {
+        "price": 843,
+        "id": 63303,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Natural / L",
+        "options": [
+          552,
+          16
+        ],
+        "sku": "10380909249153190810"
+      },
+      {
+        "price": 843,
+        "id": 63304,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Gold / L",
+        "options": [
+          438,
+          16
+        ],
+        "sku": "15910604326646043645"
+      },
+      {
+        "price": 812,
+        "id": 63305,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Dark Heather / XL",
+        "options": [
+          367,
+          17
+        ],
+        "sku": "31425535979995303687"
+      },
+      {
+        "price": 843,
+        "id": 63306,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Kelly Green / XL",
+        "options": [
+          435,
+          17
+        ],
+        "sku": "11884247057472872463"
+      },
+      {
+        "price": 843,
+        "id": 63307,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Maroon / XL",
+        "options": [
+          395,
+          17
+        ],
+        "sku": "11607465656037375894"
+      },
+      {
+        "price": 843,
+        "id": 63308,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Natural / XL",
+        "options": [
+          552,
+          17
+        ],
+        "sku": "65514267676375484428"
+      },
+      {
+        "price": 843,
+        "id": 63309,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Gold / XL",
+        "options": [
+          438,
+          17
+        ],
+        "sku": "32249009993956958939"
+      },
+      {
+        "price": 1050,
+        "id": 63310,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Dark Heather / 2XL",
+        "options": [
+          367,
+          18
+        ],
+        "sku": "13403569086210621799"
+      },
+      {
+        "price": 1082,
+        "id": 63311,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Kelly Green / 2XL",
+        "options": [
+          435,
+          18
+        ],
+        "sku": "21218173783112184525"
+      },
+      {
+        "price": 1082,
+        "id": 63312,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Maroon / 2XL",
+        "options": [
+          395,
+          18
+        ],
+        "sku": "85044082426579556037"
+      },
+      {
+        "price": 1082,
+        "id": 63313,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Natural / 2XL",
+        "options": [
+          552,
+          18
+        ],
+        "sku": "17202241399276910213"
+      },
+      {
+        "price": 1082,
+        "id": 63314,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Gold / 2XL",
+        "options": [
+          438,
+          18
+        ],
+        "sku": "84404886138942831874"
+      },
+      {
+        "price": 1283,
+        "id": 63315,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Dark Heather / 3XL",
+        "options": [
+          367,
+          19
+        ],
+        "sku": "65486133148496270472"
+      },
+      {
+        "price": 1283,
+        "id": 63316,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Kelly Green / 3XL",
+        "options": [
+          435,
+          19
+        ],
+        "sku": "20530737042195278383"
+      },
+      {
+        "price": 1283,
+        "id": 63317,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Maroon / 3XL",
+        "options": [
+          395,
+          19
+        ],
+        "sku": "32074618096024811507"
+      },
+      {
+        "price": 1283,
+        "id": 63318,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Natural / 3XL",
+        "options": [
+          552,
+          19
+        ],
+        "sku": "11814972098461155707"
+      },
+      {
+        "price": 1283,
+        "id": 63319,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Gold / 3XL",
+        "options": [
+          438,
+          19
+        ],
+        "sku": "22330217917833718746"
+      },
+      {
+        "price": 843,
+        "id": 64750,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Carolina Blue / S",
+        "options": [
+          368,
+          14
+        ],
+        "sku": "14886895300839647790"
+      },
+      {
+        "price": 843,
+        "id": 64751,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Indigo / S",
+        "options": [
+          549,
+          14
+        ],
+        "sku": "23908195795694418790"
+      },
+      {
+        "price": 2999,
+        "id": 64752,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Military Green / S",
+        "options": [
+          509,
+          14
+        ],
+        "sku": "18355874678939549676"
+      },
+      {
+        "price": 843,
+        "id": 64753,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Sapphire / S",
+        "options": [
+          519,
+          14
+        ],
+        "sku": "15034859897517563824"
+      },
+      {
+        "price": 843,
+        "id": 64754,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Jade Dome / S",
+        "options": [
+          415,
+          14
+        ],
+        "sku": "14909426929307552941"
+      },
+      {
+        "price": 843,
+        "id": 64756,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Graphite Heather / S",
+        "options": [
+          407,
+          14
+        ],
+        "sku": "22074260558078036096"
+      },
+      {
+        "price": 843,
+        "id": 64757,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Orange / S",
+        "options": [
+          525,
+          14
+        ],
+        "sku": "48870959666279345138"
+      },
+      {
+        "price": 843,
+        "id": 64758,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Carolina Blue / M",
+        "options": [
+          368,
+          15
+        ],
+        "sku": "59270354143926856724"
+      },
+      {
+        "price": 843,
+        "id": 64759,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Indigo / M",
+        "options": [
+          549,
+          15
+        ],
+        "sku": "17119128995483364192"
+      },
+      {
+        "price": 2999,
+        "id": 64760,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Military Green / M",
+        "options": [
+          509,
+          15
+        ],
+        "sku": "30590076842556932111"
+      },
+      {
+        "price": 843,
+        "id": 64761,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Sapphire / M",
+        "options": [
+          519,
+          15
+        ],
+        "sku": "92002089796228890324"
+      },
+      {
+        "price": 843,
+        "id": 64762,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Jade Dome / M",
+        "options": [
+          415,
+          15
+        ],
+        "sku": "24278145001361734892"
+      },
+      {
+        "price": 843,
+        "id": 64764,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Graphite Heather / M",
+        "options": [
+          407,
+          15
+        ],
+        "sku": "28383095144933103291"
+      },
+      {
+        "price": 843,
+        "id": 64765,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Orange / M",
+        "options": [
+          525,
+          15
+        ],
+        "sku": "25082280250391353131"
+      },
+      {
+        "price": 843,
+        "id": 64766,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Carolina Blue / L",
+        "options": [
+          368,
+          16
+        ],
+        "sku": "18878401331479885640"
+      },
+      {
+        "price": 843,
+        "id": 64767,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Indigo / L",
+        "options": [
+          549,
+          16
+        ],
+        "sku": "65754159811392420739"
+      },
+      {
+        "price": 2999,
+        "id": 64768,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Military Green / L",
+        "options": [
+          509,
+          16
+        ],
+        "sku": "31919370984557157619"
+      },
+      {
+        "price": 843,
+        "id": 64769,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Sapphire / L",
+        "options": [
+          519,
+          16
+        ],
+        "sku": "24534095660412549011"
+      },
+      {
+        "price": 843,
+        "id": 64770,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Jade Dome / L",
+        "options": [
+          415,
+          16
+        ],
+        "sku": "72268646210317241861"
+      },
+      {
+        "price": 843,
+        "id": 64772,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Graphite Heather / L",
+        "options": [
+          407,
+          16
+        ],
+        "sku": "16886292829317110247"
+      },
+      {
+        "price": 843,
+        "id": 64773,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Orange / L",
+        "options": [
+          525,
+          16
+        ],
+        "sku": "17526154695975972733"
+      },
+      {
+        "price": 843,
+        "id": 64774,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Carolina Blue / XL",
+        "options": [
+          368,
+          17
+        ],
+        "sku": "17925101439961874296"
+      },
+      {
+        "price": 843,
+        "id": 64775,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Indigo / XL",
+        "options": [
+          549,
+          17
+        ],
+        "sku": "15181412348128735504"
+      },
+      {
+        "price": 2999,
+        "id": 64776,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Military Green / XL",
+        "options": [
+          509,
+          17
+        ],
+        "sku": "69219646567522428412"
+      },
+      {
+        "price": 843,
+        "id": 64777,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Sapphire / XL",
+        "options": [
+          519,
+          17
+        ],
+        "sku": "19983812413258577597"
+      },
+      {
+        "price": 843,
+        "id": 64778,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Jade Dome / XL",
+        "options": [
+          415,
+          17
+        ],
+        "sku": "79804629326985620742"
+      },
+      {
+        "price": 843,
+        "id": 64780,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Graphite Heather / XL",
+        "options": [
+          407,
+          17
+        ],
+        "sku": "42667755755883022785"
+      },
+      {
+        "price": 843,
+        "id": 64781,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Orange / XL",
+        "options": [
+          525,
+          17
+        ],
+        "sku": "16814301733208601529"
+      },
+      {
+        "price": 1082,
+        "id": 64782,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Carolina Blue / 2XL",
+        "options": [
+          368,
+          18
+        ],
+        "sku": "27890354465420777406"
+      },
+      {
+        "price": 1082,
+        "id": 64783,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Indigo / 2XL",
+        "options": [
+          549,
+          18
+        ],
+        "sku": "95645247558300824848"
+      },
+      {
+        "price": 3099,
+        "id": 64784,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Military Green / 2XL",
+        "options": [
+          509,
+          18
+        ],
+        "sku": "15038571556078955735"
+      },
+      {
+        "price": 1082,
+        "id": 64785,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Sapphire / 2XL",
+        "options": [
+          519,
+          18
+        ],
+        "sku": "31141523649044741336"
+      },
+      {
+        "price": 1082,
+        "id": 64786,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Jade Dome / 2XL",
+        "options": [
+          415,
+          18
+        ],
+        "sku": "18045518203729440462"
+      },
+      {
+        "price": 1082,
+        "id": 64788,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Graphite Heather / 2XL",
+        "options": [
+          407,
+          18
+        ],
+        "sku": "33482095407335542940"
+      },
+      {
+        "price": 1082,
+        "id": 64789,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Orange / 2XL",
+        "options": [
+          525,
+          18
+        ],
+        "sku": "25489145532991561193"
+      },
+      {
+        "price": 1283,
+        "id": 64790,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Carolina Blue / 3XL",
+        "options": [
+          368,
+          19
+        ],
+        "sku": "20237630144452734155"
+      },
+      {
+        "price": 1283,
+        "id": 64791,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Indigo / 3XL",
+        "options": [
+          549,
+          19
+        ],
+        "sku": "15890914361328272587"
+      },
+      {
+        "price": 3199,
+        "id": 64792,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Military Green / 3XL",
+        "options": [
+          509,
+          19
+        ],
+        "sku": "17846214537744966936"
+      },
+      {
+        "price": 1283,
+        "id": 64793,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Sapphire / 3XL",
+        "options": [
+          519,
+          19
+        ],
+        "sku": "13774788870341643721"
+      },
+      {
+        "price": 1283,
+        "id": 64794,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Jade Dome / 3XL",
+        "options": [
+          415,
+          19
+        ],
+        "sku": "33647794411732130611"
+      },
+      {
+        "price": 1283,
+        "id": 64796,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Graphite Heather / 3XL",
+        "options": [
+          407,
+          19
+        ],
+        "sku": "28236588611318310444"
+      },
+      {
+        "price": 1283,
+        "id": 64797,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Orange / 3XL",
+        "options": [
+          525,
+          19
+        ],
+        "sku": "19247664286863321250"
+      },
+      {
+        "price": 1485,
+        "id": 66186,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Charcoal / 4XL",
+        "options": [
+          424,
+          20
+        ],
+        "sku": "15864156141716621045"
+      },
+      {
+        "price": 1485,
+        "id": 66188,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Daisy / 4XL",
+        "options": [
+          359,
+          20
+        ],
+        "sku": "33856104594690096778"
+      },
+      {
+        "price": 1485,
+        "id": 66190,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Dark Heather / 4XL",
+        "options": [
+          367,
+          20
+        ],
+        "sku": "93918045889645432879"
+      },
+      {
+        "price": 1485,
+        "id": 66191,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Heather Indigo / 4XL",
+        "options": [
+          549,
+          20
+        ],
+        "sku": "16395729525851891508"
+      },
+      {
+        "price": 3299,
+        "id": 66192,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Heather Military Green / 4XL",
+        "options": [
+          509,
+          20
+        ],
+        "sku": "24355052502906355762"
+      },
+      {
+        "price": 3299,
+        "id": 66193,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 220,
+        "title": "Heather Navy / 4XL",
+        "options": [
+          550,
+          20
+        ],
+        "sku": "81137964821256440192"
+      },
+      {
+        "price": 1485,
+        "id": 66197,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Irish Green / 4XL",
+        "options": [
+          369,
+          20
+        ],
+        "sku": "27277675373164235695"
+      },
+      {
+        "price": 1485,
+        "id": 66200,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Light Blue / 4XL",
+        "options": [
+          392,
+          20
+        ],
+        "sku": "21845155850009033232"
+      },
+      {
+        "price": 3299,
+        "id": 66203,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 220,
+        "title": "Navy / 4XL",
+        "options": [
+          511,
+          20
+        ],
+        "sku": "14964972551297154895"
+      },
+      {
+        "price": 1485,
+        "id": 66205,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Orange / 4XL",
+        "options": [
+          420,
+          20
+        ],
+        "sku": "24689674500742234232"
+      },
+      {
+        "price": 1485,
+        "id": 66206,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Purple / 4XL",
+        "options": [
+          398,
+          20
+        ],
+        "sku": "31396040760559304589"
+      },
+      {
+        "price": 1485,
+        "id": 66207,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Red / 4XL",
+        "options": [
+          423,
+          20
+        ],
+        "sku": "31048266982963061415"
+      },
+      {
+        "price": 1485,
+        "id": 66208,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Royal / 4XL",
+        "options": [
+          425,
+          20
+        ],
+        "sku": "26963858368715611719"
+      },
+      {
+        "price": 3299,
+        "id": 66210,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Sport Grey / 4XL",
+        "options": [
+          358,
+          20
+        ],
+        "sku": "30946550077500882880"
+      },
+      {
+        "price": 3299,
+        "id": 66211,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 220,
+        "title": "White / 4XL",
+        "options": [
+          521,
+          20
+        ],
+        "sku": "27596920286415111457"
+      },
+      {
+        "price": 3299,
+        "id": 66213,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 220,
+        "title": "Black / 4XL",
+        "options": [
+          418,
+          20
+        ],
+        "sku": "23374356745990755428"
+      },
+      {
+        "price": 1485,
+        "id": 66214,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Cardinal Red / 4XL",
+        "options": [
+          430,
+          20
+        ],
+        "sku": "88883979286466697179"
+      },
+      {
+        "price": 1485,
+        "id": 66218,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 220,
+        "title": "Heather Irish Green / 4XL",
+        "options": [
+          527,
+          20
+        ],
+        "sku": "85994470367712107782"
+      },
+      {
+        "price": 3299,
+        "id": 66221,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 220,
+        "title": "Military Green / 4XL",
+        "options": [
+          364,
+          20
+        ],
+        "sku": "31395928577042263205"
+      },
+      {
+        "price": 2999,
+        "id": 66241,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Ice Grey / S",
+        "options": [
+          437,
+          14
+        ],
+        "sku": "22930358739568923635"
+      },
+      {
+        "price": 2999,
+        "id": 66242,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Ice Grey / M",
+        "options": [
+          437,
+          15
+        ],
+        "sku": "89707534559957200491"
+      },
+      {
+        "price": 2999,
+        "id": 66243,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Ice Grey / L",
+        "options": [
+          437,
+          16
+        ],
+        "sku": "58624243825596913835"
+      },
+      {
+        "price": 2999,
+        "id": 66244,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Ice Grey / XL",
+        "options": [
+          437,
+          17
+        ],
+        "sku": "57479642092285230258"
+      },
+      {
+        "price": 3099,
+        "id": 66245,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Ice Grey / 2XL",
+        "options": [
+          437,
+          18
+        ],
+        "sku": "11230251475463121882"
+      },
+      {
+        "price": 3199,
+        "id": 66246,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Ice Grey / 3XL",
+        "options": [
+          437,
+          19
+        ],
+        "sku": "22007804149461619626"
+      },
+      {
+        "price": 843,
+        "id": 66329,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Lime / S",
+        "options": [
+          434,
+          14
+        ],
+        "sku": "29755589462420526536"
+      },
+      {
+        "price": 843,
+        "id": 66330,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Lime / M",
+        "options": [
+          434,
+          15
+        ],
+        "sku": "11462187548606517852"
+      },
+      {
+        "price": 843,
+        "id": 66331,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Lime / L",
+        "options": [
+          434,
+          16
+        ],
+        "sku": "24742366694483180169"
+      },
+      {
+        "price": 843,
+        "id": 66332,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Lime / XL",
+        "options": [
+          434,
+          17
+        ],
+        "sku": "31632917158875032607"
+      },
+      {
+        "price": 1082,
+        "id": 66333,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Lime / 2XL",
+        "options": [
+          434,
+          18
+        ],
+        "sku": "26509223617965665239"
+      },
+      {
+        "price": 1283,
+        "id": 66334,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Lime / 3XL",
+        "options": [
+          434,
+          19
+        ],
+        "sku": "15346787640930989297"
+      },
+      {
+        "price": 843,
+        "id": 66371,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Tropical Blue / S",
+        "options": [
+          376,
+          14
+        ],
+        "sku": "23882901212502939798"
+      },
+      {
+        "price": 843,
+        "id": 66372,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Tropical Blue / M",
+        "options": [
+          376,
+          15
+        ],
+        "sku": "32274562067041296124"
+      },
+      {
+        "price": 843,
+        "id": 66373,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Tropical Blue / L",
+        "options": [
+          376,
+          16
+        ],
+        "sku": "14039819801188573956"
+      },
+      {
+        "price": 843,
+        "id": 66374,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Tropical Blue / XL",
+        "options": [
+          376,
+          17
+        ],
+        "sku": "10806041367378288457"
+      },
+      {
+        "price": 1082,
+        "id": 66375,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Tropical Blue / 2XL",
+        "options": [
+          376,
+          18
+        ],
+        "sku": "20060089545296475665"
+      },
+      {
+        "price": 1283,
+        "id": 66376,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Tropical Blue / 3XL",
+        "options": [
+          376,
+          19
+        ],
+        "sku": "17936958429261509532"
+      },
+      {
+        "price": 843,
+        "id": 67435,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Antique Cherry Red / S",
+        "options": [
+          373,
+          14
+        ],
+        "sku": "11964522212222877006"
+      },
+      {
+        "price": 2999,
+        "id": 67436,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Sand / S",
+        "options": [
+          421,
+          14
+        ],
+        "sku": "11515320503088674175"
+      },
+      {
+        "price": 843,
+        "id": 67437,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Cherry Red / S",
+        "options": [
+          529,
+          14
+        ],
+        "sku": "21798100522717852445"
+      },
+      {
+        "price": 843,
+        "id": 67438,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Indigo Blue / S",
+        "options": [
+          397,
+          14
+        ],
+        "sku": "30267424078666996181"
+      },
+      {
+        "price": 843,
+        "id": 67439,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Kiwi / S",
+        "options": [
+          553,
+          14
+        ],
+        "sku": "33229892961857138349"
+      },
+      {
+        "price": 843,
+        "id": 67440,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Antique Cherry Red / M",
+        "options": [
+          373,
+          15
+        ],
+        "sku": "15221999532397284376"
+      },
+      {
+        "price": 2999,
+        "id": 67441,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Sand / M",
+        "options": [
+          421,
+          15
+        ],
+        "sku": "18089954596550652416"
+      },
+      {
+        "price": 843,
+        "id": 67442,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Cherry Red / M",
+        "options": [
+          529,
+          15
+        ],
+        "sku": "11325396643947294104"
+      },
+      {
+        "price": 843,
+        "id": 67443,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Indigo Blue / M",
+        "options": [
+          397,
+          15
+        ],
+        "sku": "14814182134292424233"
+      },
+      {
+        "price": 843,
+        "id": 67444,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Kiwi / M",
+        "options": [
+          553,
+          15
+        ],
+        "sku": "23468549531664882202"
+      },
+      {
+        "price": 843,
+        "id": 67445,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Antique Cherry Red / L",
+        "options": [
+          373,
+          16
+        ],
+        "sku": "48370428526686851194"
+      },
+      {
+        "price": 2999,
+        "id": 67446,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Sand / L",
+        "options": [
+          421,
+          16
+        ],
+        "sku": "44136016911018762472"
+      },
+      {
+        "price": 843,
+        "id": 67447,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Cherry Red / L",
+        "options": [
+          529,
+          16
+        ],
+        "sku": "24142650980393113336"
+      },
+      {
+        "price": 843,
+        "id": 67448,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Indigo Blue / L",
+        "options": [
+          397,
+          16
+        ],
+        "sku": "26411211007891102695"
+      },
+      {
+        "price": 843,
+        "id": 67449,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Kiwi / L",
+        "options": [
+          553,
+          16
+        ],
+        "sku": "88079558911286324980"
+      },
+      {
+        "price": 843,
+        "id": 67450,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Antique Cherry Red / XL",
+        "options": [
+          373,
+          17
+        ],
+        "sku": "33616570111900044270"
+      },
+      {
+        "price": 2999,
+        "id": 67451,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Sand / XL",
+        "options": [
+          421,
+          17
+        ],
+        "sku": "29664856433299047278"
+      },
+      {
+        "price": 843,
+        "id": 67452,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Cherry Red / XL",
+        "options": [
+          529,
+          17
+        ],
+        "sku": "31959853317361054044"
+      },
+      {
+        "price": 843,
+        "id": 67453,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Indigo Blue / XL",
+        "options": [
+          397,
+          17
+        ],
+        "sku": "12995497604259298610"
+      },
+      {
+        "price": 843,
+        "id": 67454,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Kiwi / XL",
+        "options": [
+          553,
+          17
+        ],
+        "sku": "12504811074394175804"
+      },
+      {
+        "price": 1082,
+        "id": 67455,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Antique Cherry Red / 2XL",
+        "options": [
+          373,
+          18
+        ],
+        "sku": "18937647358591578968"
+      },
+      {
+        "price": 3099,
+        "id": 67456,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Sand / 2XL",
+        "options": [
+          421,
+          18
+        ],
+        "sku": "23201771586184255977"
+      },
+      {
+        "price": 1082,
+        "id": 67457,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Cherry Red / 2XL",
+        "options": [
+          529,
+          18
+        ],
+        "sku": "25301411582691987133"
+      },
+      {
+        "price": 1082,
+        "id": 67458,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Indigo Blue / 2XL",
+        "options": [
+          397,
+          18
+        ],
+        "sku": "22430690659338900505"
+      },
+      {
+        "price": 1082,
+        "id": 67459,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Kiwi / 2XL",
+        "options": [
+          553,
+          18
+        ],
+        "sku": "28768542881752442923"
+      },
+      {
+        "price": 1283,
+        "id": 67460,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Antique Cherry Red / 3XL",
+        "options": [
+          373,
+          19
+        ],
+        "sku": "26583822852501694135"
+      },
+      {
+        "price": 3199,
+        "id": 67461,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Sand / 3XL",
+        "options": [
+          421,
+          19
+        ],
+        "sku": "33884501253579622172"
+      },
+      {
+        "price": 1283,
+        "id": 67462,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Cherry Red / 3XL",
+        "options": [
+          529,
+          19
+        ],
+        "sku": "20539768104140074103"
+      },
+      {
+        "price": 1283,
+        "id": 67463,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Indigo Blue / 3XL",
+        "options": [
+          397,
+          19
+        ],
+        "sku": "15641354749089941012"
+      },
+      {
+        "price": 1283,
+        "id": 67464,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Kiwi / 3XL",
+        "options": [
+          553,
+          19
+        ],
+        "sku": "14488799438422525906"
+      },
+      {
+        "price": 843,
+        "id": 67802,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 100,
+        "title": "Charcoal / XS",
+        "options": [
+          424,
+          13
+        ],
+        "sku": "14742549106193373549"
+      },
+      {
+        "price": 843,
+        "id": 67806,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 100,
+        "title": "Dark Heather / XS",
+        "options": [
+          367,
+          13
+        ],
+        "sku": "33417013676257797519"
+      },
+      {
+        "price": 2999,
+        "id": 67809,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 100,
+        "title": "Heather Navy / XS",
+        "options": [
+          550,
+          13
+        ],
+        "sku": "20994317270918205235"
+      },
+      {
+        "price": 2999,
+        "id": 67819,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 100,
+        "title": "Navy / XS",
+        "options": [
+          511,
+          13
+        ],
+        "sku": "29075913906513135403"
+      },
+      {
+        "price": 843,
+        "id": 67823,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 100,
+        "title": "Red / XS",
+        "options": [
+          423,
+          13
+        ],
+        "sku": "12840144431191978195"
+      },
+      {
+        "price": 843,
+        "id": 67824,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 100,
+        "title": "Royal / XS",
+        "options": [
+          425,
+          13
+        ],
+        "sku": "13589374563374112024"
+      },
+      {
+        "price": 2999,
+        "id": 67827,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 100,
+        "title": "Sport Grey / XS",
+        "options": [
+          358,
+          13
+        ],
+        "sku": "70368968625120893882"
+      },
+      {
+        "price": 2999,
+        "id": 67829,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 100,
+        "title": "White / XS",
+        "options": [
+          521,
+          13
+        ],
+        "sku": "25523502427057521509"
+      },
+      {
+        "price": 2999,
+        "id": 67831,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 100,
+        "title": "Black / XS",
+        "options": [
+          418,
+          13
+        ],
+        "sku": "23744787856040206239"
+      },
+      {
+        "price": 843,
+        "id": 67839,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 100,
+        "title": "Heather Royal / XS",
+        "options": [
+          514,
+          13
+        ],
+        "sku": "26128907425825790065"
+      },
+      {
+        "price": 843,
+        "id": 68756,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Coral Silk / S",
+        "options": [
+          387,
+          14
+        ],
+        "sku": "43162974155545094492"
+      },
+      {
+        "price": 843,
+        "id": 68757,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Iris / S",
+        "options": [
+          393,
+          14
+        ],
+        "sku": "13673402524449715461"
+      },
+      {
+        "price": 843,
+        "id": 68758,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Metro Blue / S",
+        "options": [
+          388,
+          14
+        ],
+        "sku": "17293592473214414661"
+      },
+      {
+        "price": 843,
+        "id": 68759,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Mint Green / S",
+        "options": [
+          389,
+          14
+        ],
+        "sku": "20263631306097243993"
+      },
+      {
+        "price": 843,
+        "id": 68764,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Coral Silk / M",
+        "options": [
+          387,
+          15
+        ],
+        "sku": "10973186356332119919"
+      },
+      {
+        "price": 843,
+        "id": 68765,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Iris / M",
+        "options": [
+          393,
+          15
+        ],
+        "sku": "97359268723774052979"
+      },
+      {
+        "price": 843,
+        "id": 68766,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Metro Blue / M",
+        "options": [
+          388,
+          15
+        ],
+        "sku": "16941941992518633238"
+      },
+      {
+        "price": 843,
+        "id": 68767,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Mint Green / M",
+        "options": [
+          389,
+          15
+        ],
+        "sku": "13027011169413661678"
+      },
+      {
+        "price": 843,
+        "id": 68770,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Coral Silk / L",
+        "options": [
+          387,
+          16
+        ],
+        "sku": "40436806824900033259"
+      },
+      {
+        "price": 843,
+        "id": 68771,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Iris / L",
+        "options": [
+          393,
+          16
+        ],
+        "sku": "72522804595831054217"
+      },
+      {
+        "price": 843,
+        "id": 68772,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Metro Blue / L",
+        "options": [
+          388,
+          16
+        ],
+        "sku": "29163419352869757057"
+      },
+      {
+        "price": 843,
+        "id": 68773,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Mint Green / L",
+        "options": [
+          389,
+          16
+        ],
+        "sku": "23866877834529305105"
+      },
+      {
+        "price": 843,
+        "id": 68776,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Coral Silk / XL",
+        "options": [
+          387,
+          17
+        ],
+        "sku": "29558944161058162056"
+      },
+      {
+        "price": 843,
+        "id": 68777,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Iris / XL",
+        "options": [
+          393,
+          17
+        ],
+        "sku": "18231849682265894160"
+      },
+      {
+        "price": 843,
+        "id": 68778,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Metro Blue / XL",
+        "options": [
+          388,
+          17
+        ],
+        "sku": "32225055675276006632"
+      },
+      {
+        "price": 843,
+        "id": 68779,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Mint Green / XL",
+        "options": [
+          389,
+          17
+        ],
+        "sku": "16636398786324437540"
+      },
+      {
+        "price": 1082,
+        "id": 68782,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Coral Silk / 2XL",
+        "options": [
+          387,
+          18
+        ],
+        "sku": "13352900391013885189"
+      },
+      {
+        "price": 1082,
+        "id": 68783,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Iris / 2XL",
+        "options": [
+          393,
+          18
+        ],
+        "sku": "28256256317586173847"
+      },
+      {
+        "price": 1082,
+        "id": 68784,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Metro Blue / 2XL",
+        "options": [
+          388,
+          18
+        ],
+        "sku": "30599057264792375598"
+      },
+      {
+        "price": 1082,
+        "id": 68785,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Mint Green / 2XL",
+        "options": [
+          389,
+          18
+        ],
+        "sku": "23116317809123005823"
+      },
+      {
+        "price": 1283,
+        "id": 68788,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Coral Silk / 3XL",
+        "options": [
+          387,
+          19
+        ],
+        "sku": "29498126356639064259"
+      },
+      {
+        "price": 1283,
+        "id": 68789,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Iris / 3XL",
+        "options": [
+          393,
+          19
+        ],
+        "sku": "75630391005295435355"
+      },
+      {
+        "price": 1283,
+        "id": 68790,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Metro Blue / 3XL",
+        "options": [
+          388,
+          19
+        ],
+        "sku": "15208119444550299650"
+      },
+      {
+        "price": 1283,
+        "id": 68791,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Mint Green / 3XL",
+        "options": [
+          389,
+          19
+        ],
+        "sku": "23281324833764975218"
+      },
+      {
+        "price": 843,
+        "id": 93309,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Radiant Orchid / S",
+        "options": [
+          4025,
+          14
+        ],
+        "sku": "29086317642673654308"
+      },
+      {
+        "price": 843,
+        "id": 93310,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Radiant Orchid / M",
+        "options": [
+          4025,
+          15
+        ],
+        "sku": "11522378174018944816"
+      },
+      {
+        "price": 843,
+        "id": 93311,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Radiant Orchid / L",
+        "options": [
+          4025,
+          16
+        ],
+        "sku": "24638144306047703803"
+      },
+      {
+        "price": 843,
+        "id": 93312,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Radiant Orchid / XL",
+        "options": [
+          4025,
+          17
+        ],
+        "sku": "16222582725830001960"
+      },
+      {
+        "price": 1082,
+        "id": 93313,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Radiant Orchid / 2XL",
+        "options": [
+          4025,
+          18
+        ],
+        "sku": "10611645649919314763"
+      },
+      {
+        "price": 1283,
+        "id": 93314,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Radiant Orchid / 3XL",
+        "options": [
+          4025,
+          19
+        ],
+        "sku": "13077406329884406741"
+      },
+      {
+        "price": 843,
+        "id": 94869,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Cardinal / S",
+        "options": [
+          548,
+          14
+        ],
+        "sku": "20273532654811306234"
+      },
+      {
+        "price": 843,
+        "id": 94870,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Cardinal / M",
+        "options": [
+          548,
+          15
+        ],
+        "sku": "25184381740945309615"
+      },
+      {
+        "price": 843,
+        "id": 94871,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Cardinal / L",
+        "options": [
+          548,
+          16
+        ],
+        "sku": "81399231338810998815"
+      },
+      {
+        "price": 843,
+        "id": 94872,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Cardinal / XL",
+        "options": [
+          548,
+          17
+        ],
+        "sku": "22747933156791385340"
+      },
+      {
+        "price": 1082,
+        "id": 94873,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Cardinal / 2XL",
+        "options": [
+          548,
+          18
+        ],
+        "sku": "25668634090459394653"
+      },
+      {
+        "price": 1283,
+        "id": 94874,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Cardinal / 3XL",
+        "options": [
+          548,
+          19
+        ],
+        "sku": "31727468659408522366"
+      },
+      {
+        "price": 1688,
+        "id": 95143,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 240,
+        "title": "Charcoal / 5XL",
+        "options": [
+          424,
+          21
+        ],
+        "sku": "33240009048241674084"
+      },
+      {
+        "price": 1688,
+        "id": 95148,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 240,
+        "title": "Dark Heather / 5XL",
+        "options": [
+          367,
+          21
+        ],
+        "sku": "18238791231985589341"
+      },
+      {
+        "price": 3499,
+        "id": 95152,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 240,
+        "title": "Heather Navy / 5XL",
+        "options": [
+          550,
+          21
+        ],
+        "sku": "13178435769759297880"
+      },
+      {
+        "price": 3499,
+        "id": 95166,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 240,
+        "title": "Navy / 5XL",
+        "options": [
+          511,
+          21
+        ],
+        "sku": "13711408754918980182"
+      },
+      {
+        "price": 1688,
+        "id": 95170,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 240,
+        "title": "Red / 5XL",
+        "options": [
+          423,
+          21
+        ],
+        "sku": "16010141577763523362"
+      },
+      {
+        "price": 1688,
+        "id": 95171,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 240,
+        "title": "Royal / 5XL",
+        "options": [
+          425,
+          21
+        ],
+        "sku": "24585638778645950795"
+      },
+      {
+        "price": 3499,
+        "id": 95175,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 240,
+        "title": "White / 5XL",
+        "options": [
+          521,
+          21
+        ],
+        "sku": "22303161263413129094"
+      },
+      {
+        "price": 3499,
+        "id": 95176,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 240,
+        "title": "Sport Grey / 5XL",
+        "options": [
+          358,
+          21
+        ],
+        "sku": "23009208206710480028"
+      },
+      {
+        "price": 3499,
+        "id": 95180,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 240,
+        "title": "Black / 5XL",
+        "options": [
+          418,
+          21
+        ],
+        "sku": "25449258358884725262"
+      },
+      {
+        "price": 2999,
+        "id": 104684,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 111,
+        "title": "Dark Heather Grey / S",
+        "options": [
+          4708,
+          14
+        ],
+        "sku": "19000698326175367376"
+      },
+      {
+        "price": 2999,
+        "id": 104685,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 120,
+        "title": "Dark Heather Grey / M",
+        "options": [
+          4708,
+          15
+        ],
+        "sku": "14709758463494217578"
+      },
+      {
+        "price": 2999,
+        "id": 104686,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 140,
+        "title": "Dark Heather Grey / L",
+        "options": [
+          4708,
+          16
+        ],
+        "sku": "16270412379391623521"
+      },
+      {
+        "price": 2999,
+        "id": 104687,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 160,
+        "title": "Dark Heather Grey / XL",
+        "options": [
+          4708,
+          17
+        ],
+        "sku": "32454335452660102542"
+      },
+      {
+        "price": 3099,
+        "id": 104688,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 180,
+        "title": "Dark Heather Grey / 2XL",
+        "options": [
+          4708,
+          18
+        ],
+        "sku": "33071391737064110179"
+      },
+      {
+        "price": 3199,
+        "id": 104689,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 200,
+        "title": "Dark Heather Grey / 3XL",
+        "options": [
+          4708,
+          19
+        ],
+        "sku": "47420807622553695849"
+      },
+      {
+        "price": 3299,
+        "id": 104690,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 220,
+        "title": "Dark Heather Grey / 4XL",
+        "options": [
+          4708,
+          20
+        ],
+        "sku": "12725255745353238538"
+      },
+      {
+        "price": 3499,
+        "id": 104691,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 240,
+        "title": "Dark Heather Grey / 5XL",
+        "options": [
+          4708,
+          21
+        ],
+        "sku": "21694096249183112300"
+      },
+      {
+        "price": 2999,
+        "id": 105180,
+        "is_default": false,
+        "is_enabled": true,
+        "grams": 100,
+        "title": "Dark Heather Grey / XS",
+        "options": [
+          4708,
+          13
+        ],
+        "sku": "18004666105102146108"
+      },
+      {
+        "price": 843,
+        "id": 105203,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Pistachio / S",
+        "options": [
+          370,
+          14
+        ],
+        "sku": "13303169144194426449"
+      },
+      {
+        "price": 843,
+        "id": 105204,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Pistachio / M",
+        "options": [
+          370,
+          15
+        ],
+        "sku": "69431061415540021566"
+      },
+      {
+        "price": 843,
+        "id": 105205,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Pistachio / L",
+        "options": [
+          370,
+          16
+        ],
+        "sku": "12034426732214263789"
+      },
+      {
+        "price": 843,
+        "id": 105206,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Pistachio / XL",
+        "options": [
+          370,
+          17
+        ],
+        "sku": "18754696165733344321"
+      },
+      {
+        "price": 1082,
+        "id": 105207,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Pistachio / 2XL",
+        "options": [
+          370,
+          18
+        ],
+        "sku": "27509621138008910051"
+      },
+      {
+        "price": 1283,
+        "id": 105208,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Pistachio / 3XL",
+        "options": [
+          370,
+          19
+        ],
+        "sku": "23586046219459735377"
+      },
+      {
+        "price": 843,
+        "id": 105212,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Sky / S",
+        "options": [
+          551,
+          14
+        ],
+        "sku": "31822861502035549027"
+      },
+      {
+        "price": 843,
+        "id": 105213,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Sky / M",
+        "options": [
+          551,
+          15
+        ],
+        "sku": "22475069762840613835"
+      },
+      {
+        "price": 843,
+        "id": 105214,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Sky / L",
+        "options": [
+          551,
+          16
+        ],
+        "sku": "80726202836638091695"
+      },
+      {
+        "price": 843,
+        "id": 105215,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Sky / XL",
+        "options": [
+          551,
+          17
+        ],
+        "sku": "17895839897785681369"
+      },
+      {
+        "price": 1082,
+        "id": 105216,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Sky / 2XL",
+        "options": [
+          551,
+          18
+        ],
+        "sku": "12282932335464875973"
+      },
+      {
+        "price": 1283,
+        "id": 105217,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Sky / 3XL",
+        "options": [
+          551,
+          19
+        ],
+        "sku": "19249983774485341202"
+      },
+      {
+        "price": 2999,
+        "id": 105221,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Light Pink / S",
+        "options": [
+          433,
+          14
+        ],
+        "sku": "20534270008560846780"
+      },
+      {
+        "price": 2999,
+        "id": 105222,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Light Pink / M",
+        "options": [
+          433,
+          15
+        ],
+        "sku": "30427215846307738648"
+      },
+      {
+        "price": 2999,
+        "id": 105223,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Light Pink / L",
+        "options": [
+          433,
+          16
+        ],
+        "sku": "30935679135938259462"
+      },
+      {
+        "price": 2999,
+        "id": 105224,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Light Pink / XL",
+        "options": [
+          433,
+          17
+        ],
+        "sku": "10026075725659693154"
+      },
+      {
+        "price": 3099,
+        "id": 105225,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Light Pink / 2XL",
+        "options": [
+          433,
+          18
+        ],
+        "sku": "10414912267319669801"
+      },
+      {
+        "price": 3199,
+        "id": 105226,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Light Pink / 3XL",
+        "options": [
+          433,
+          19
+        ],
+        "sku": "16366188904325133106"
+      },
+      {
+        "price": 843,
+        "id": 105230,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Stone Blue / S",
+        "options": [
+          431,
+          14
+        ],
+        "sku": "23077540951914752994"
+      },
+      {
+        "price": 843,
+        "id": 105231,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Stone Blue / M",
+        "options": [
+          431,
+          15
+        ],
+        "sku": "89828348549729671019"
+      },
+      {
+        "price": 843,
+        "id": 105232,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Stone Blue / L",
+        "options": [
+          431,
+          16
+        ],
+        "sku": "63956784215584850931"
+      },
+      {
+        "price": 843,
+        "id": 105233,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Stone Blue / XL",
+        "options": [
+          431,
+          17
+        ],
+        "sku": "21719082427695816652"
+      },
+      {
+        "price": 1082,
+        "id": 105234,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Stone Blue / 2XL",
+        "options": [
+          431,
+          18
+        ],
+        "sku": "24085076903238776403"
+      },
+      {
+        "price": 1283,
+        "id": 105235,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Stone Blue / 3XL",
+        "options": [
+          431,
+          19
+        ],
+        "sku": "21033493079428493849"
+      },
+      {
+        "price": 843,
+        "id": 105239,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Berry / S",
+        "options": [
+          4743,
+          14
+        ],
+        "sku": "34212002849799730297"
+      },
+      {
+        "price": 843,
+        "id": 105240,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Berry / M",
+        "options": [
+          4743,
+          15
+        ],
+        "sku": "26192073718930910786"
+      },
+      {
+        "price": 843,
+        "id": 105241,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Berry / L",
+        "options": [
+          4743,
+          16
+        ],
+        "sku": "50512671190781485020"
+      },
+      {
+        "price": 843,
+        "id": 105242,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Berry / XL",
+        "options": [
+          4743,
+          17
+        ],
+        "sku": "24018055832572848111"
+      },
+      {
+        "price": 1082,
+        "id": 105243,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Berry / 2XL",
+        "options": [
+          4743,
+          18
+        ],
+        "sku": "13729731007381739832"
+      },
+      {
+        "price": 1283,
+        "id": 105244,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Berry / 3XL",
+        "options": [
+          4743,
+          19
+        ],
+        "sku": "31777287892187333733"
+      },
+      {
+        "price": 843,
+        "id": 105248,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Galapagos Blue / S",
+        "options": [
+          4744,
+          14
+        ],
+        "sku": "10421261641885513754"
+      },
+      {
+        "price": 843,
+        "id": 105249,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Galapagos Blue / M",
+        "options": [
+          4744,
+          15
+        ],
+        "sku": "25179194503816343418"
+      },
+      {
+        "price": 843,
+        "id": 105250,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Galapagos Blue / L",
+        "options": [
+          4744,
+          16
+        ],
+        "sku": "99631266614202825525"
+      },
+      {
+        "price": 843,
+        "id": 105251,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Galapagos Blue / XL",
+        "options": [
+          4744,
+          17
+        ],
+        "sku": "14635427053744741038"
+      },
+      {
+        "price": 1082,
+        "id": 105252,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Galapagos Blue / 2XL",
+        "options": [
+          4744,
+          18
+        ],
+        "sku": "44812542141154153048"
+      },
+      {
+        "price": 1283,
+        "id": 105253,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Galapagos Blue / 3XL",
+        "options": [
+          4744,
+          19
+        ],
+        "sku": "19403632908377552422"
+      },
+      {
+        "price": 843,
+        "id": 105257,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Heliconia / S",
+        "options": [
+          4745,
+          14
+        ],
+        "sku": "65797178866465749756"
+      },
+      {
+        "price": 843,
+        "id": 105258,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Heliconia / M",
+        "options": [
+          4745,
+          15
+        ],
+        "sku": "24609660201406901033"
+      },
+      {
+        "price": 843,
+        "id": 105259,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Heliconia / L",
+        "options": [
+          4745,
+          16
+        ],
+        "sku": "19786813584549745418"
+      },
+      {
+        "price": 843,
+        "id": 105260,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Heliconia / XL",
+        "options": [
+          4745,
+          17
+        ],
+        "sku": "33587449189454208766"
+      },
+      {
+        "price": 1082,
+        "id": 105261,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Heliconia / 2XL",
+        "options": [
+          4745,
+          18
+        ],
+        "sku": "23183095999140435466"
+      },
+      {
+        "price": 1283,
+        "id": 105262,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Heliconia / 3XL",
+        "options": [
+          4745,
+          19
+        ],
+        "sku": "31794740663901411797"
+      },
+      {
+        "price": 843,
+        "id": 105266,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Heather Maroon / S",
+        "options": [
+          4746,
+          14
+        ],
+        "sku": "33451108423586380077"
+      },
+      {
+        "price": 843,
+        "id": 105267,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Heather Maroon / M",
+        "options": [
+          4746,
+          15
+        ],
+        "sku": "68010013692588629130"
+      },
+      {
+        "price": 843,
+        "id": 105268,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Heather Maroon / L",
+        "options": [
+          4746,
+          16
+        ],
+        "sku": "31279495829887876701"
+      },
+      {
+        "price": 843,
+        "id": 105269,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Heather Maroon / XL",
+        "options": [
+          4746,
+          17
+        ],
+        "sku": "15916144368828070478"
+      },
+      {
+        "price": 1082,
+        "id": 105270,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Heather Maroon / 2XL",
+        "options": [
+          4746,
+          18
+        ],
+        "sku": "26045162774648741747"
+      },
+      {
+        "price": 1283,
+        "id": 105271,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Heather Maroon / 3XL",
+        "options": [
+          4746,
+          19
+        ],
+        "sku": "26097362707129751653"
+      },
+      {
+        "price": 843,
+        "id": 105275,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Paragon / S",
+        "options": [
+          4713,
+          14
+        ],
+        "sku": "21388024633394765266"
+      },
+      {
+        "price": 843,
+        "id": 105276,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Paragon / M",
+        "options": [
+          4713,
+          15
+        ],
+        "sku": "51009885763126359612"
+      },
+      {
+        "price": 843,
+        "id": 105277,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Paragon / L",
+        "options": [
+          4713,
+          16
+        ],
+        "sku": "18119623303547490274"
+      },
+      {
+        "price": 843,
+        "id": 105278,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Paragon / XL",
+        "options": [
+          4713,
+          17
+        ],
+        "sku": "18867983748314580917"
+      },
+      {
+        "price": 1082,
+        "id": 105279,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Paragon / 2XL",
+        "options": [
+          4713,
+          18
+        ],
+        "sku": "51070691955352258010"
+      },
+      {
+        "price": 1283,
+        "id": 105280,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Paragon / 3XL",
+        "options": [
+          4713,
+          19
+        ],
+        "sku": "12337469477524819418"
+      },
+      {
+        "price": 843,
+        "id": 105284,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 111,
+        "title": "Sage / S",
+        "options": [
+          4748,
+          14
+        ],
+        "sku": "18269756925153060558"
+      },
+      {
+        "price": 843,
+        "id": 105285,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 120,
+        "title": "Sage / M",
+        "options": [
+          4748,
+          15
+        ],
+        "sku": "74595330233275558026"
+      },
+      {
+        "price": 843,
+        "id": 105286,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 140,
+        "title": "Sage / L",
+        "options": [
+          4748,
+          16
+        ],
+        "sku": "16916216110261529489"
+      },
+      {
+        "price": 843,
+        "id": 105287,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 160,
+        "title": "Sage / XL",
+        "options": [
+          4748,
+          17
+        ],
+        "sku": "15645367196648350318"
+      },
+      {
+        "price": 1082,
+        "id": 105288,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 180,
+        "title": "Sage / 2XL",
+        "options": [
+          4748,
+          18
+        ],
+        "sku": "29966852915405082392"
+      },
+      {
+        "price": 1283,
+        "id": 105289,
+        "is_default": false,
+        "is_enabled": false,
+        "grams": 200,
+        "title": "Sage / 3XL",
+        "options": [
+          4748,
+          19
+        ],
+        "sku": "29753389221564442788"
+      }
+    ]
+  }
+}

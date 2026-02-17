@@ -1,0 +1,26 @@
+{
+  "endpoint": "https://api.printify.com/v1/shops/test_shop_123/products.json",
+  "headers": {
+    "Authorization": "Bearer test_printify_token",
+    "Content-Type": "application/json"
+  },
+  "payload": {
+    "blueprint_id": 3,
+    "title": "Duplicated Product",
+    "description": "A test product description",
+    "print_provider_id": 5,
+    "tags": [
+      "test",
+      "t-shirt"
+    ],
+    "print_areas": [],
+    "variants": [
+      {
+        "id": 101,
+        "price": 2500,
+        "is_enabled": true,
+        "is_default": true
+      }
+    ]
+  }
+}
