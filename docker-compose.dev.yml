@@ -1,0 +1,16 @@
+services:
+  pod-design-tools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./.env
+    environment:
+      PORT: "5003"
+      FLASK_APP: "wsgi:app"
+      FLASK_DEBUG: "1"
+    command: ["flask", "--app", "wsgi:app", "run", "--host=0.0.0.0", "--port=5003", "--debug"]
+    volumes:
+      - ./:/app

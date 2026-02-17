@@ -15,6 +15,74 @@ bp = Blueprint("api", __name__)
 PRODUCTS_COLLECTION = "shopify_products"
 
 
+def _extract_color_option_values(product: dict) -> list[str]:
+    for opt in (product.get("options") or []):
+        name = str(opt.get("name") or "").strip().lower()
+        if name not in ("color", "colour"):
+            continue
+        values = opt.get("values") or []
+        out = []
+        for v in values:
+            if isinstance(v, dict):
+                val = v.get("name") or v.get("value") or v.get("title")
+            else:
+                val = v
+            val = str(val or "").strip()
+            if val:
+                out.append(val)
+        return out
+    return []
+
+
+def _merge_swatch_mapping_for_cache(existing: dict | None, raw_product: dict, live_status: dict | None = None) -> dict:
+    previous = (existing or {}).get("swatch_mapping") or {}
+    color_values = _extract_color_option_values(raw_product)
+    total = len(color_values)
+
+    if live_status:
+        linked_after = int(live_status.get("linked_after") or 0)
+        if linked_after > total:
+            linked_after = total
+        state = live_status.get("state")
+        if total == 0:
+            state = "no_color_option"
+        elif state not in ("mapped", "needs_mapping"):
+            state = "needs_mapping" if linked_after < total else "mapped"
+        needs_mapping = bool(live_status.get("needs_mapping")) if total > 0 else False
+        if state == "mapped":
+            needs_mapping = False
+        elif state == "needs_mapping":
+            needs_mapping = True
+        return {
+            **previous,
+            "total_color_values": total,
+            "linked_after": linked_after,
+            "state": state,
+            "needs_mapping": needs_mapping,
+        }
+
+    linked_after = int(previous.get("linked_after") or 0)
+    if linked_after > total:
+        linked_after = total
+
+    if total == 0:
+        state = "no_color_option"
+    elif not previous:
+        state = "unknown"
+    elif linked_after >= total:
+        state = "mapped"
+    else:
+        state = "needs_mapping"
+
+    return {
+        **previous,
+        "total_color_values": total,
+        "linked_after": linked_after,
+        "state": state,
+        "needs_mapping": state == "needs_mapping" or state == "unknown",
+    }
+
+
 @bp.get("/products")
 def api_list_products():
     return jsonify(store.list(PRODUCTS_COLLECTION))
@@ -23,11 +91,24 @@ def api_list_products():
 @bp.post("/products/cache/update")
 def update_products_cache():
     # Fetch all products from Shopify and normalize to our schema
+    existing_products = {
+        str(item.get("id")): item
+        for item in store.list(PRODUCTS_COLLECTION)
+        if item.get("id") is not None
+    }
     raw_products = shopify_client.list_all_products(limit=250)
     normalized = {}
 
     for p in raw_products:
         pid = str(p.get("id"))
+        live_swatch_status = None
+        try:
+            if hasattr(shopify_client, "get_color_option_link_status"):
+                live_swatch_status = shopify_client.get_color_option_link_status(pid)
+        except Exception:
+            # Non-fatal: keep prior cached status or unknown.
+            live_swatch_status = None
+
         handle = p.get("handle")
         url = shopify_client.product_url(handle)
         product_type = p.get("product_type") or ""
@@ -126,11 +207,16 @@ def update_products_cache():
             "status": status,
             "created_at": created_at,
             "updated_at": updated_at,
+            "swatch_mapping": _merge_swatch_mapping_for_cache(existing_products.get(pid), p, live_swatch_status),
         }
 
     # Save cache
     store.replace_collection(PRODUCTS_COLLECTION, normalized)
-    return jsonify({"count": len(normalized)})
+    needs_mapping = sum(
+        1 for item in normalized.values()
+        if ((item.get("swatch_mapping") or {}).get("needs_mapping") is True)
+    )
+    return jsonify({"count": len(normalized), "needs_mapping": needs_mapping})
 
 @bp.post("/recommend/colors")
 def recommend_colors():

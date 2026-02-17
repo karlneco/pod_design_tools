@@ -87,6 +87,7 @@ def _normalize(p: dict) -> dict:
     # color swatches / options (optional)
     options = p.get("options") or []
     variants = p.get("variants") or []
+    swatch_mapping = p.get("swatch_mapping") or {}
 
     return {
         "id": str(p.get("id") or ""),
@@ -98,6 +99,7 @@ def _normalize(p: dict) -> dict:
         "tags": tags,
         "options": options,
         "variants": variants,
+        "swatch_mapping": swatch_mapping,
         "raw": p,  # keep full payload for the right-side “Raw JSON” section
     }
 

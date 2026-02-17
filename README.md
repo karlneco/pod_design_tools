@@ -22,6 +22,27 @@ docker compose up --build
 
 Default mapping is `5003:5003`.
 
+## Docker dev (hot reload)
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+This mounts the repo into the container and runs Flask in debug mode, so Python/template changes reload automatically.
+
+Useful commands:
+
+```bash
+# start in background
+docker compose -f docker-compose.dev.yml up --build -d
+
+# tail logs
+docker compose -f docker-compose.dev.yml logs -f --tail=100
+
+# stop
+docker compose -f docker-compose.dev.yml down
+```
+
 ## Auto-deploy CI (Gitea)
 
 This repo now follows the same auto-deploy structure as your other pod apps:

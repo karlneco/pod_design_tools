@@ -15,6 +15,9 @@
     pre{background:#f7f7f7;border:1px solid #e6e6e6;border-radius:8px;padding:1rem;max-height:50vh;overflow:auto}
     .actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
     .status-toggle{display:flex;align-items:center;gap:.5rem;margin-top:.25rem}
+    .swatch-report{margin-top:1rem;padding:.75rem;border:1px solid #e6e6e6;border-radius:8px;background:#fafafa}
+    .swatch-report h3{margin:0 0 .4rem 0;font-size:1rem}
+    .swatch-report p{margin:.2rem 0}
     input[type="text"], textarea{width:100%;}
     textarea{min-height:160px;}
     @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
@@ -80,12 +83,21 @@
       <div class="actions">
         <div>
           <button type="button" id="saveBtn">Save Changes</button>
+          <button type="button" id="applySwatchesBtn" class="secondary" style="margin-left:.5rem;">Apply color swatches</button>
           <button type="button" id="updateMockupsBtn" class="secondary" style="margin-left:.5rem;">Update mockups</button>
           <small id="saveStatus" class="muted"></small>
+          <small id="applySwatchesStatus" class="muted" style="display:block;"></small>
           <small id="updateMockupsStatus" class="muted" style="display:block;"></small>
         </div>
         <button type="button" id="refreshBtn" class="secondary">Update from Shopify</button>
       </div>
+
+      <section class="swatch-report">
+        <h3>Swatch mapping status</h3>
+        <p id="swatchSummary" class="muted">No swatch mapping run recorded yet.</p>
+        <p id="swatchSkipped" class="muted"></p>
+        <p id="swatchLastRun" class="muted"></p>
+      </section>
     </form>
 
     <div style="margin-top:1rem;">
@@ -112,6 +124,48 @@ const refreshBtn = document.getElementById('refreshBtn');
 const genBtn = document.getElementById('genMockups');
 const aiDescBtn = document.getElementById('aiDescBtn');
 const updateMockupsBtn = document.getElementById('updateMockupsBtn');
+const applySwatchesBtn = document.getElementById('applySwatchesBtn');
+const swatchSummary = document.getElementById('swatchSummary');
+const swatchSkipped = document.getElementById('swatchSkipped');
+const swatchLastRun = document.getElementById('swatchLastRun');
+let swatchStatus = {{ p.swatch_mapping | default({}, true) | tojson }};
+
+function clearStatusLater(el, ms = 3000) {
+  if (!el) return;
+  setTimeout(() => {
+    const txt = (el.textContent || '').trim();
+    if (!txt.toLowerCase().startsWith('error')) {
+      el.textContent = '';
+    }
+  }, ms);
+}
+
+function renderSwatchStatus(status) {
+  const s = status || {};
+  const total = Number(s.total_color_values || 0);
+  const linked = Number(s.linked_after || 0);
+  const updated = Number(s.updated || 0);
+  const noPattern = (s.skipped_no_pattern || []).length;
+  const unmatched = (s.skipped_unmatched || []).length;
+  const already = (s.skipped_already_linked || []).length;
+
+  if (!total) {
+    swatchSummary.textContent = 'No swatch mapping run recorded yet.';
+    swatchSkipped.textContent = '';
+    swatchLastRun.textContent = '';
+    return;
+  }
+
+  swatchSummary.textContent = `Linked ${linked}/${total} color value(s). Last run updated ${updated}.`;
+  const parts = [];
+  if (already) parts.push(`${already} already linked`);
+  if (noPattern) parts.push(`${noPattern} missing color-pattern`);
+  if (unmatched) parts.push(`${unmatched} unmatched option values`);
+  swatchSkipped.textContent = parts.length ? `Details: ${parts.join(', ')}.` : '';
+  swatchLastRun.textContent = s.last_attempt_at ? `Last run: ${new Date(s.last_attempt_at).toLocaleString()}` : '';
+}
+
+renderSwatchStatus(swatchStatus);
 
 saveBtn.addEventListener('click', async () => {
   const id = document.getElementById('productId').value;
@@ -141,7 +195,7 @@ saveBtn.addEventListener('click', async () => {
     saveStatus.textContent = 'Error';
   } finally {
     saveBtn.disabled = false;
-    setTimeout(()=> saveStatus.textContent='', 1500);
+    clearStatusLater(saveStatus, 2000);
   }
 });
 
@@ -170,7 +224,7 @@ updateMockupsBtn?.addEventListener('click', async () => {
       if (p.done) {
         status.textContent = p.error ? `Error: ${p.error}` : 'Update complete.';
         updateMockupsBtn.disabled = false;
-        setTimeout(() => { status.textContent = ''; }, 3000);
+        clearStatusLater(status, 3500);
         return;
       }
       setTimeout(poll, 1000);
@@ -180,9 +234,57 @@ updateMockupsBtn?.addEventListener('click', async () => {
     status.textContent = 'Error: ' + e.message;
     updateMockupsBtn.disabled = false;
   } finally {
-    if (status.textContent.startsWith('Error')) {
-      setTimeout(() => { status.textContent = ''; }, 3000);
+    // Keep error text visible until next action.
+  }
+});
+
+applySwatchesBtn?.addEventListener('click', async () => {
+  const id = document.getElementById('productId').value;
+  const status = document.getElementById('applySwatchesStatus');
+  applySwatchesBtn.disabled = true;
+  status.textContent = 'Applying swatches…';
+  try {
+    const res = await fetch(`/api/shopify/products/${encodeURIComponent(id)}/apply_swatches`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to apply swatches');
+    swatchStatus = {
+      updated: data.updated || 0,
+      total_color_values: data.total_color_values || 0,
+      linked_after: data.linked_after || 0,
+      skipped_no_pattern: data.skipped_no_pattern || [],
+      skipped_unmatched: data.skipped_unmatched || [],
+      skipped_already_linked: data.skipped_already_linked || [],
+      last_attempt_at: new Date().toISOString(),
+    };
+    renderSwatchStatus(swatchStatus);
+    const updated = data.updated || 0;
+    const skippedNoPattern = (data.skipped_no_pattern || []).length;
+    const skippedAlready = (data.skipped_already_linked || []).length;
+    if (updated) {
+      const parts = [`Applied ${updated} swatch link${updated === 1 ? '' : 's'}.`];
+      if (skippedAlready) parts.push(`${skippedAlready} already linked.`);
+      if (skippedNoPattern) parts.push(`${skippedNoPattern} missing color-pattern match.`);
+      if (data.category_update?.updated) {
+        const cat = data.category_update?.category?.fullName || data.category_update?.category?.name || 'category';
+        parts.push(`Category set: ${cat}.`);
+      }
+      status.textContent = parts.join(' ');
+    } else {
+      const base = skippedNoPattern
+        ? `No changes. ${skippedNoPattern} color(s) missing color-pattern match.`
+        : 'No swatch changes needed.';
+      if (data.category_update?.updated) {
+        const cat = data.category_update?.category?.fullName || data.category_update?.category?.name || 'category';
+        status.textContent = `${base} Category set: ${cat}.`;
+      } else {
+        status.textContent = base;
+      }
     }
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    applySwatchesBtn.disabled = false;
+    clearStatusLater(status, 4000);
   }
 });
 
@@ -208,7 +310,7 @@ aiDescBtn?.addEventListener('click', async () => {
     status.textContent = 'Error: ' + e.message;
   } finally {
     aiDescBtn.disabled = false;
-    setTimeout(() => { status.textContent = ''; }, 2500);
+    clearStatusLater(status, 3000);
   }
 });
 
@@ -255,7 +357,7 @@ genBtn?.addEventListener('click', async () => {
     status.textContent = 'Error';
   } finally {
     genBtn.disabled = false;
-    setTimeout(()=> status.textContent = '', 2000);
+    clearStatusLater(status, 3000);
   }
 });
 
@@ -276,7 +378,7 @@ regenBtn?.addEventListener('click', async () => {
     status.textContent = 'Error';
   } finally {
     regenBtn.disabled = false;
-    setTimeout(()=> status.textContent = '', 2000);
+    clearStatusLater(status, 3000);
   }
 });
 </script>

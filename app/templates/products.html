@@ -113,6 +113,13 @@
             color: #666;
             font-size: 0.9em;
         }
+        .swatch-state {
+            margin-top: .35rem;
+            font-size: .85em;
+        }
+        .swatch-ok { color: #036d19; }
+        .swatch-warn { color: #8a5a00; }
+        .swatch-unknown { color: #666; }
 
         /* Rich description rendering */
         .desc-wrap {
@@ -245,6 +252,24 @@
                             Updated: {{ pretty_date(p.updated_at) }}
                         {% endif %}
                     </p>
+                    {% set sm = p.swatch_mapping or {} %}
+                    {% set sm_state = (sm.state or 'unknown') %}
+                    {% if sm_state == 'mapped' %}
+                        <p class="swatch-state swatch-ok">
+                            Swatches: mapped ({{ sm.linked_after or 0 }}/{{ sm.total_color_values or 0 }})
+                        </p>
+                    {% elif sm_state in ['needs_mapping', 'unknown'] %}
+                        <p class="swatch-state swatch-warn">
+                            Swatches: needs mapping ({{ sm.linked_after or 0 }}/{{ sm.total_color_values or 0 }})
+                        </p>
+                    {% elif sm_state == 'no_color_option' %}
+                        <p class="swatch-state swatch-unknown">
+                            Swatches: n/a (no color option)
+                        </p>
+                    {% endif %}
+                    {% if sm.last_attempt_at %}
+                        <p class="muted">Swatch check: {{ pretty_date(sm.last_attempt_at) }}</p>
+                    {% endif %}
 
                     {% if p.color_variants %}
                         <div>

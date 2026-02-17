@@ -4,6 +4,7 @@ from ..extensions import store, shopify_client as shopify
 from .. import Config
 from ..extensions import printify_client as printify
 from pathlib import Path
+from datetime import datetime, timezone
 import shutil
 import httpx
 from threading import Thread
@@ -26,6 +27,15 @@ def _normalize_product_tags(product: dict) -> dict:
         elif not isinstance(raw_tags, list):
             product["tags"] = []
     return product
+
+
+def _merge_swatch_mapping_status(product: dict, status: dict | None) -> dict:
+    """Persist local swatch mapping status in cached product records."""
+    merged = dict(product or {})
+    if not status:
+        return merged
+    merged["swatch_mapping"] = status
+    return merged
 
 
 # ========================================
@@ -559,16 +569,93 @@ def api_shopify_save(product_id):
 def api_shopify_refresh(product_id):
     """Fetch latest data from Shopify and refresh cache"""
     try:
+        existing = (store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or
+                    store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or {})
+        existing_status = existing.get("swatch_mapping")
         product = shopify.get_product(product_id)
         if product:
             # Normalize tags from comma-separated string to array for database storage
             product = _normalize_product_tags(product)
+            product = _merge_swatch_mapping_status(product, existing_status)
             store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), product)
             return jsonify({"ok": True, "product": product})
         return jsonify({"error": "Product not found"}), 404
     except Exception as e:
         current_app.logger.exception("Shopify refresh failed")
         return jsonify({"error": str(e)}), 400
+
+
+@bp.post("/shopify/products/<product_id>/apply_swatches")
+def api_shopify_apply_swatches(product_id: str):
+    """Apply Shopify swatches for Color/Colour option values."""
+    if shopify is None or not hasattr(shopify, "apply_color_swatches"):
+        return jsonify({"error": "Shopify swatch update is unavailable"}), 501
+
+    try:
+        result = shopify.apply_color_swatches(product_id)
+    except Exception as e:
+        msg = str(e)
+        if "OptionValueUpdateInput" in msg and "swatch" in msg.lower():
+            return jsonify({
+                "error": (
+                    "This Shopify API version doesn't allow setting swatches directly on "
+                    "optionValuesToUpdate. Swatches must be applied through metafield-linked "
+                    "color options (shopify.color-pattern)."
+                ),
+                "details": msg,
+            }), 400
+        if "Access denied" in msg and "metaobjects" in msg.lower():
+            return jsonify({
+                "error": (
+                    "Shopify access token is missing metaobject read access. "
+                    "Enable the `read_metaobjects` scope for this app and reinstall/update the app token, "
+                    "then try again."
+                ),
+                "details": msg,
+            }), 403
+        current_app.logger.exception("Failed to apply swatches for Shopify product %s", product_id)
+        return jsonify({"error": msg}), 500
+
+    refreshed = None
+    try:
+        status = {
+            "updated": int(result.get("updated") or 0),
+            "total_color_values": int(result.get("total_color_values") or 0),
+            "linked_after": int(result.get("linked_after") or 0),
+            "skipped_no_pattern": result.get("skipped_no_pattern") or [],
+            "skipped_unmatched": result.get("skipped_unmatched") or [],
+            "skipped_already_linked": result.get("skipped_already_linked") or [],
+            "last_attempt_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if status["total_color_values"] == 0:
+            status["state"] = "no_color_option"
+        elif status["linked_after"] >= status["total_color_values"]:
+            status["state"] = "mapped"
+        else:
+            status["state"] = "needs_mapping"
+        status["needs_mapping"] = status["state"] in ("needs_mapping",)
+        refreshed = shopify.get_product(product_id)
+        if refreshed:
+            refreshed = _merge_swatch_mapping_status(refreshed, status)
+            store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), refreshed)
+        else:
+            existing = (store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or
+                        store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or {})
+            if existing:
+                store.upsert(
+                    SHOPIFY_PRODUCTS_COLLECTION,
+                    str(product_id),
+                    _merge_swatch_mapping_status(existing, status),
+                )
+    except Exception:
+        current_app.logger.exception("Failed to refresh Shopify product after swatch apply")
+
+    return jsonify({
+        "ok": True,
+        "product_id": str(product_id),
+        **result,
+        "product": refreshed if refreshed is not None else {},
+    })
 
 
 @bp.post("/shopify/products/<product_id>/generate_mockups")

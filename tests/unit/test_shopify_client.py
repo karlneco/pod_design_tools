@@ -336,3 +336,65 @@ class TestShopifyClient:
             # Verify status=active was passed
             request = respx.calls.last.request
             assert "status=active" in str(request.url)
+
+    def test_apply_color_swatches_success(self, shopify_client, monkeypatch):
+        product_response = {
+            "id": 987654321,
+            "options": [
+                {"name": "Size", "values": ["S", "M"]},
+                {"name": "Color", "values": ["Black", "White"]},
+            ],
+        }
+        monkeypatch.setattr(shopify_client, "get_product", lambda _pid: product_response)
+        monkeypatch.setattr(
+            shopify_client,
+            "ensure_product_category_for_swatches",
+            lambda *_args, **_kwargs: {"updated": False, "reason": "already_set", "category": None},
+        )
+
+        gql_calls = {"count": 0}
+
+        def _fake_graphql(_query, _variables):
+            gql_calls["count"] += 1
+            if "query ProductColorOption" in _query:
+                return {
+                    "product": {
+                        "options": [
+                            {
+                                "id": "gid://shopify/ProductOption/1",
+                                "name": "Color",
+                                "optionValues": [
+                                    {"id": "gid://shopify/ProductOptionValue/11", "name": "Black", "linkedMetafieldValue": None},
+                                    {"id": "gid://shopify/ProductOptionValue/12", "name": "White", "linkedMetafieldValue": None},
+                                ],
+                            }
+                        ]
+                    }
+                }
+            if "query ColorPatternLookup" in _query:
+                q = (_variables or {}).get("query", "")
+                if "Black" in q:
+                    return {"metaobjects": {"nodes": [{"id": "gid://shopify/Metaobject/101", "displayName": "Black"}]}}
+                if "White" in q:
+                    return {"metaobjects": {"nodes": [{"id": "gid://shopify/Metaobject/102", "displayName": "White"}]}}
+                return {"metaobjects": {"nodes": []}}
+            return {"productOptionUpdate": {"userErrors": []}}
+
+        monkeypatch.setattr(shopify_client, "_graphql", _fake_graphql)
+
+        result = shopify_client.apply_color_swatches("987654321")
+
+        assert result["updated"] == 2
+        assert result["skipped_no_pattern"] == []
+        assert result["category_update"]["updated"] is False
+        assert gql_calls["count"] == 4
+
+    def test_apply_color_swatches_requires_color_option(self, shopify_client, monkeypatch):
+        product_response = {
+            "id": 987654321,
+            "options": [{"name": "Size", "values": ["S", "M"]}],
+        }
+        monkeypatch.setattr(shopify_client, "get_product", lambda _pid: product_response)
+
+        with pytest.raises(ValueError, match="Color/Colour option"):
+            shopify_client.apply_color_swatches("987654321")

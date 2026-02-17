@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from pathlib import Path
 import httpx
 
@@ -46,10 +47,12 @@ COLORS_USER_PROMPT = (
 
 DESCRIPTION_USER_PROMPT = (
     "Write a short Shopify product description in HTML that follows this exact format:\n"
-    "<h2>Title - Streetwear Tee Front Print</h2>\n"
+    "<h4>Short evocative heading</h4>\n"
     "<p class=\"p4\">One paragraph, 2–3 sentences. Include one emphasized phrase wrapped as "
     "<span class=\"s2\"><b>...</b></span>. Keep it travel-forward and evocative. "
     "Do NOT describe the graphic or the illustration itself. Focus on mood, place, and vibe.\n\n"
+    "The <h4> heading must be 2-6 words and MUST NOT be identical to the product title.\n"
+    "Do not repeat the exact title_hint text in the heading.\n\n"
     "End the paragraph with exactly 3 emojis that fit the mood.\n"
     "Use plain ASCII punctuation (avoid smart quotes or en-dashes).\n\n"
     "Product context:\n"
@@ -142,13 +145,38 @@ def suggest_description(title_hint: str, tags, notes: str):
         tags=tags,
         notes=notes or "",
     )
-    content = _chat([
+    messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
-    ])
+    ]
+    content = _chat(messages)
     content = content.strip()
     if content.startswith("```"):
         lines = [l for l in content.splitlines() if not l.strip().startswith("```")]
         content = "\n".join(lines).strip()
+    # Backward-compat: coerce legacy h2 output to h4.
+    content = re.sub(r"<\s*h2(\b[^>]*)>", r"<h4\1>", content, flags=re.IGNORECASE)
+    content = re.sub(r"<\s*/\s*h2\s*>", "</h4>", content, flags=re.IGNORECASE)
+
+    def _norm(s: str) -> str:
+        return " ".join((s or "").strip().lower().split())
+
+    # If heading mirrors the exact product title, replace it locally (no extra AI call).
+    heading_match = re.search(r"<\s*h4\b[^>]*>(.*?)<\s*/\s*h4\s*>", content, flags=re.IGNORECASE | re.DOTALL)
+    if heading_match and _norm(re.sub(r"<[^>]+>", "", heading_match.group(1))) == _norm(title_hint):
+        fallback_heading = "Roadtrip Energy"
+        t = _norm(title_hint)
+        if "hoodie" in t or "sweatshirt" in t:
+            fallback_heading = "Mountain Air Mood"
+        elif "t-shirt" in t or "tshirt" in t or "tee" in t:
+            fallback_heading = "City To Summit"
+        content = re.sub(
+            r"<\s*h4\b[^>]*>.*?<\s*/\s*h4\s*>",
+            f"<h4>{fallback_heading}</h4>",
+            content,
+            count=1,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+
     content = content.replace("–", "-").replace("—", "-").replace("“", "\"").replace("”", "\"").replace("’", "'")
     return content
