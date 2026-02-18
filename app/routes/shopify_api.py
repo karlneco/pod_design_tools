@@ -47,7 +47,7 @@ def _persona_key_to_local_path(person_key: str | None) -> str | None:
     if not key.startswith("persona:"):
         return None
     filename = key.split("persona:", 1)[1]
-    p = Config.ASSETS_DIR / "personas" / filename
+    p = Config.DATA_DIR / "personas" / filename
     if p.exists() and p.is_file():
         return str(p)
     return None

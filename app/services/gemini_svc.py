@@ -98,6 +98,9 @@ def generate_lifestyle_images(
     num_images: int = 1,
     reference_local_paths: list[str] | None = None,
     reference_urls: list[str] | None = None,
+    image_aspect_ratio: str | None = None,
+    image_size: str | None = None,
+    model_override: str | None = None,
 ) -> list[dict]:
     """Generate lifestyle images with Gemini image model.
 
@@ -110,6 +113,7 @@ def generate_lifestyle_images(
 
     try:
         from google import genai
+        from google.genai import types
     except Exception as e:
         raise ValueError(
             "google-genai is not installed. Add it to requirements and rebuild the container."
@@ -132,12 +136,25 @@ def generate_lifestyle_images(
     n = max(1, min(int(num_images or 1), 10))
     for _ in range(n):
         payload = [prompt] + pil_refs
-        model_chain = [GEMINI_IMAGE_MODEL] + [m for m in GEMINI_IMAGE_FALLBACK_MODELS if m != GEMINI_IMAGE_MODEL]
+        chosen_model = (model_override or GEMINI_IMAGE_MODEL).strip()
+        model_chain = [chosen_model] + [m for m in GEMINI_IMAGE_FALLBACK_MODELS if m != chosen_model]
         image_bytes = None
         last_err = None
+        cfg = None
+        if image_aspect_ratio or image_size:
+            cfg = types.GenerateContentConfig(
+                image_config=types.ImageConfig(
+                    aspect_ratio=image_aspect_ratio or "1:1",
+                    image_size=image_size or "1K",
+                )
+            )
         for model_name in model_chain:
             try:
-                response = client.models.generate_content(model=model_name, contents=payload)
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=payload,
+                    config=cfg,
+                )
                 image_bytes = _extract_generated_image_bytes(response)
                 if image_bytes:
                     break

@@ -10,6 +10,11 @@ def serve_mockup(filename):
     return send_from_directory(dirpath, filename)
 
 
+@bp.get("/assets/personas/<path:filename>")
+def serve_persona_asset(filename: str):
+    return send_from_directory(Config.DATA_DIR / "personas", filename)
+
+
 @bp.get('/assets/<path:filename>')
 def serve_asset(filename: str):
     return send_from_directory(Config.ASSETS_DIR, filename)

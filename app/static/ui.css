@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap");
 
 :root {
+  --app-max-width: 1700px;
   --bg: #f6f2eb;
   --panel: #f7f8fb;
   --text: #1f2937;
@@ -48,7 +49,7 @@ body.container.app-theme {
 }
 
 body.app-theme > :not(.app-topbar) {
-  width: min(1100px, calc(100% - 48px));
+  width: min(var(--app-max-width), calc(100% - 48px));
   margin-left: auto;
   margin-right: auto;
 }
@@ -83,7 +84,7 @@ body.app-theme > .app-topbar + * {
 
 .app-topbar > div,
 .app-topbar nav {
-  width: min(1100px, calc(100% - 48px));
+  width: min(var(--app-max-width), calc(100% - 48px));
   margin-left: auto;
   margin-right: auto;
 }
@@ -165,7 +166,7 @@ body.app-theme .card {
 body.app-theme hr {
   border-color: #d7d0c5;
   margin: 18px auto;
-  width: min(1260px, calc(100% - 48px));
+  width: min(var(--app-max-width), calc(100% - 48px));
 }
 
 body.app-theme input,
