@@ -1908,7 +1908,7 @@ def api_shopify_lifestyle_apply_to_shopify(product_id: str):
         return jsonify({"error": "No valid local images selected"}), 400
 
     try:
-        uploaded = shopify.upload_product_images(product_id, local_files, webp_quality=80)
+        uploaded = shopify.upload_product_images(product_id, local_files, webp_quality=90)
     except Exception as e:
         current_app.logger.exception("Failed uploading lifestyle images to Shopify %s", product_id)
         return jsonify({"error": str(e)}), 500
