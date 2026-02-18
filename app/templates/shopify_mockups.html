@@ -35,8 +35,8 @@
     <div class="grid">
       {% for m in mockups %}
         <div class="card">
-          <img src="/assets/{{ m }}" alt="Mockup {{ loop.index }}"/>
-          <div style="margin-top:.5rem;font-size:.9rem;color:#555">{{ m.split('/')[-1] }}</div>
+          <img src="{{ m.url }}" alt="Mockup {{ loop.index }}"/>
+          <div style="margin-top:.5rem;font-size:.9rem;color:#555">{{ m.name }}</div>
         </div>
       {% endfor %}
     </div>

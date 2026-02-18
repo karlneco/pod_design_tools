@@ -23,7 +23,7 @@
 </header>
 
 <p><b>{{ p.title }}</b> ({{ p.id }})</p>
-<p class="muted">Files are saved to <code>assets/product_mockups/{{ p.id }}</code>, then uploaded with the same Shopify flow used by generated mockups (WebP conversion, color/default image handling).</p>
+<p class="muted">Files are saved to <code>data/designs/shopify-{{ p.id }}/mockups</code> (or your configured <code>PRODUCT_MOCKUPS_DIR/shopify-{{ p.id }}/mockups</code>), then uploaded with the same Shopify flow used by generated mockups (WebP conversion, color/default image handling).</p>
 
 {% if color_options %}
   <p class="muted">Known product colors: {{ color_options | join(', ') }}</p>
@@ -49,8 +49,8 @@
   <div class="grid">
     {% for m in existing_mockups %}
       <article class="card">
-        <img src="/assets/{{ m }}" alt="{{ m.split('/')[-1] }}"/>
-        <div class="muted" style="margin-top:.35rem;font-size:.9rem;">{{ m.split('/')[-1] }}</div>
+        <img src="{{ m.url }}" alt="{{ m.name }}"/>
+        <div class="muted" style="margin-top:.35rem;font-size:.9rem;">{{ m.name }}</div>
       </article>
     {% endfor %}
   </div>

@@ -402,7 +402,7 @@ def _generate_shopify_mockups_for_product(product_id: str, placements: dict, sca
         if pa_src and isinstance(bg, str) and bg:
             pa_bg_map.setdefault(str(bg).lstrip("#").upper(), pa_src)
 
-    out_dir = Config.PRODUCT_MOCKUPS_DIR / str(product_id)
+    out_dir = _product_mockups_dir(product_id)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     out_files = []
@@ -727,6 +727,30 @@ def _find_design_for_template(
     return fallback_src
 
 
+def _product_mockups_dir(product_id: str) -> Path:
+    """Canonical product mockup directory with migration from legacy locations."""
+    new_dir = Config.PRODUCT_MOCKUPS_DIR / f"shopify-{product_id}" / "mockups"
+    legacy_dirs = [
+        Config.ASSETS_DIR / "product_mockups" / str(product_id),
+        Config.DATA_DIR / "product_mockups" / str(product_id),
+    ]
+    for old_dir in legacy_dirs:
+        if not old_dir.exists():
+            continue
+        new_dir.mkdir(parents=True, exist_ok=True)
+        for src in old_dir.iterdir():
+            if not src.is_file() or src.suffix.lower() not in Config.ALLOWED_EXTS:
+                continue
+            dst = new_dir / src.name
+            if dst.exists():
+                continue
+            try:
+                shutil.copy2(src, dst)
+            except Exception:
+                continue
+    return new_dir
+
+
 def _humanize_color_stem(value: str) -> str:
     parts = [p for p in str(value or "").replace("_", " ").replace("-", " ").split() if p]
     if not parts:
@@ -775,7 +799,7 @@ def api_shopify_upload_manual_mockups(product_id: str):
         return jsonify({"error": "No files uploaded. Use multipart/form-data with one or more 'files' fields."}), 400
 
     replace_existing = str(request.form.get("replace_existing", "true")).strip().lower() in ("1", "true", "yes", "on")
-    out_dir = Config.PRODUCT_MOCKUPS_DIR / str(product_id)
+    out_dir = _product_mockups_dir(product_id)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if replace_existing:
@@ -1209,7 +1233,7 @@ def api_shopify_apply_generated_mockups(product_id: str):
     default_variant_id = body.get("default_variant_id")
 
     # 1) Locate generated mockups folder
-    folder = Config.ASSETS_DIR / "product_mockups" / str(product_id)
+    folder = _product_mockups_dir(product_id)
     if not folder.exists():
         return jsonify({"error": f"No generated mockups folder found for product {product_id}"}), 404
 
@@ -1460,7 +1484,7 @@ def api_shopify_update_mockups(product_id: str):
             progress = UPDATE_PROGRESS[str(product_id)]
 
             # 1) Locate generated mockups
-            folder = Config.PRODUCT_MOCKUPS_DIR / str(product_id)
+            folder = _product_mockups_dir(product_id)
             if not folder.exists():
                 raise RuntimeError(f"No generated mockups folder found for product {product_id}")
 

@@ -65,8 +65,35 @@ def _normalize(p: dict) -> dict:
     """Normalize Shopify product payload -> fields used by our templates."""
     if not p:
         return {}
-    images = p.get("primary_image") or []
-    primary_image = images
+    primary_image = None
+    pri = p.get("primary_image")
+    if isinstance(pri, str) and pri:
+        primary_image = pri
+    elif isinstance(pri, dict):
+        primary_image = pri.get("src") or pri.get("url")
+    elif isinstance(pri, list) and pri:
+        first = pri[0]
+        if isinstance(first, str):
+            primary_image = first
+        elif isinstance(first, dict):
+            primary_image = first.get("src") or first.get("url")
+
+    if not primary_image:
+        img_obj = p.get("image")
+        if isinstance(img_obj, dict):
+            primary_image = img_obj.get("src") or img_obj.get("url")
+        elif isinstance(img_obj, str):
+            primary_image = img_obj
+
+    if not primary_image:
+        for img in (p.get("images") or []):
+            if isinstance(img, dict):
+                candidate = img.get("src") or img.get("url")
+            else:
+                candidate = img if isinstance(img, str) else None
+            if candidate:
+                primary_image = candidate
+                break
 
     # product status: 'active'|'draft'|'archived' (Storefront API/REST may vary)
     status = p.get("status") or p.get("published_scope") or "unknown"
@@ -285,6 +312,30 @@ def _list_lifestyle_images(product_id: str) -> list[dict]:
     return out
 
 
+def _product_mockups_dir(product_id: str) -> Path:
+    """Return canonical product mockup dir, migrating known legacy locations."""
+    new_dir = Config.PRODUCT_MOCKUPS_DIR / f"shopify-{product_id}" / "mockups"
+    legacy_dirs = [
+        Config.ASSETS_DIR / "product_mockups" / str(product_id),
+        Config.DATA_DIR / "product_mockups" / str(product_id),
+    ]
+    for old_dir in legacy_dirs:
+        if not old_dir.exists():
+            continue
+        new_dir.mkdir(parents=True, exist_ok=True)
+        for src in old_dir.iterdir():
+            if not src.is_file() or src.suffix.lower() not in Config.ALLOWED_EXTS:
+                continue
+            dst = new_dir / src.name
+            if dst.exists():
+                continue
+            try:
+                shutil.copy2(src, dst)
+            except Exception:
+                continue
+    return new_dir
+
+
 def _get_printify_reference_images_for_shopify_product(product_id: str) -> list[str]:
     printify_item = None
     for item in store.list("printify_products"):
@@ -364,7 +415,7 @@ def edit_shopify_product(product_id: str):
         ), 404
 
     # Determine if generated mockups already exist for this product
-    folder = Config.ASSETS_DIR / 'product_mockups' / str(product_id)
+    folder = _product_mockups_dir(product_id)
     has_mockups = False
     mockups_count = 0
     try:
@@ -383,17 +434,15 @@ def edit_shopify_product(product_id: str):
 
 @bp.get('/products/<product_id>/mockups')
 def shopify_product_mockups(product_id: str):
-    # Look for generated mockups under assets/product_mockups/<product_id>
-    folder = Config.ASSETS_DIR / 'product_mockups' / str(product_id)
+    folder = _product_mockups_dir(product_id)
     mockups = []
     if folder.exists():
         for p in sorted(folder.iterdir()):
             if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp'):
-                # Provide path relative to the ASSETS folder so template can reference via /assets/<path>
-                try:
-                    mockups.append(str(p.relative_to(Config.ASSETS_DIR)))
-                except Exception:
-                    mockups.append(str(p.name))
+                mockups.append({
+                    "name": p.name,
+                    "url": f"/designs/shopify-{product_id}/mockups/{p.name}",
+                })
     design_slug = _resolve_design_slug_for_product(product_id)
     return render_template('shopify_mockups.html', id=product_id, mockups=mockups, design_slug=design_slug)
 
@@ -404,15 +453,15 @@ def shopify_product_manual_mockups(product_id: str):
               store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {})
     product = _normalize(cached) if cached else {"id": str(product_id), "title": "(not found)"}
     color_options = _extract_product_colors(product)
-    folder = Config.ASSETS_DIR / 'product_mockups' / str(product_id)
+    folder = _product_mockups_dir(product_id)
     existing = []
     if folder.exists():
         for p in sorted(folder.iterdir()):
             if p.suffix.lower() in Config.ALLOWED_EXTS:
-                try:
-                    existing.append(str(p.relative_to(Config.ASSETS_DIR)))
-                except Exception:
-                    existing.append(str(p.name))
+                existing.append({
+                    "name": p.name,
+                    "url": f"/designs/shopify-{product_id}/mockups/{p.name}",
+                })
     return render_template(
         'shopify_manual_mockups.html',
         p=product,

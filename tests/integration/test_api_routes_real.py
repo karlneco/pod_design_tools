@@ -206,6 +206,21 @@ class TestPageRoutes:
 
             assert response.status_code == 200
 
+    def test_shopify_edit_uses_image_when_primary_missing(self, client):
+        """Edit page should show hero image from Shopify 'image' field if primary_image is absent."""
+        with patch('app.routes.shopify.store') as mock_store:
+            mock_store.get.return_value = {
+                "id": "12345",
+                "title": "Test Product",
+                "image": {"src": "https://cdn.example.com/hero.webp"},
+                "images": [{"src": "https://cdn.example.com/hero.webp"}],
+                "variants": [],
+                "options": [],
+            }
+            response = client.get('/shopify/products/12345/edit')
+            assert response.status_code == 200
+            assert b"https://cdn.example.com/hero.webp" in response.data
+
     def test_printify_index(self, client):
         """Test GET /printify renders printify page."""
         with patch('app.routes.printify.store') as mock_store:

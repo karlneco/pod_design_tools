@@ -22,7 +22,7 @@ class Config:
     DEFAULT_FRONT_IMAGE_ID = "68faffc792143382282f3002"
 
     MOCKUP_STYLE_G64K_DIR = Path(os.getenv("MOCKUP_STYLE_G64K_DIR", str(ASSETS_DIR / "mockups" / "g64k")))
-    PRODUCT_MOCKUPS_DIR = Path(os.getenv("PRODUCT_MOCKUPS_DIR", str(ASSETS_DIR / "product_mockups")))
+    PRODUCT_MOCKUPS_DIR = Path(os.getenv("PRODUCT_MOCKUPS_DIR", str(DATA_DIR / "designs")))
 
 class DevConfig(Config):
     DEBUG = True

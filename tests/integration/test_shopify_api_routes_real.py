@@ -488,7 +488,7 @@ class TestShopifyManualMockupUploads:
     """Tests for manual mockup upload route."""
 
     def test_upload_manual_mockups_saves_under_product_mockups(self, client, tmp_path):
-        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', tmp_path / "product_mockups"), \
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', tmp_path / "designs"), \
              patch('app.routes.shopify_api._get_shopify_variants') as mock_variants:
             mock_variants.return_value = [
                 {"id": 1, "option1": "Dark Heather Grey", "is_enabled": True},
@@ -509,7 +509,7 @@ class TestShopifyManualMockupUploads:
             payload = response.get_json()
             assert payload["ok"] is True
             assert payload["saved_count"] == 1
-            assert (tmp_path / "product_mockups" / "12345" / "Dark Heather Grey.png").exists()
+            assert (tmp_path / "designs" / "shopify-12345" / "mockups" / "Dark Heather Grey.png").exists()
 
     def test_upload_manual_mockups_requires_files(self, client):
         response = client.post(

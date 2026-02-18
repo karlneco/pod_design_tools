@@ -21,3 +21,9 @@ def mockup_editor(slug: str):
     if slug.startswith("shopify-"):
         product_id = slug.split("shopify-", 1)[1]
     return render_template("mockup_editor.html", slug=slug, product_id=product_id)
+
+
+@bp.get("/designs/shopify-<product_id>/mockups/<path:filename>")
+def serve_product_mockup(product_id: str, filename: str):
+    dirpath = Config.PRODUCT_MOCKUPS_DIR / f"shopify-{product_id}" / "mockups"
+    return send_from_directory(dirpath, filename)
