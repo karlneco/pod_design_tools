@@ -15,6 +15,10 @@
     .uploaded-badge{position:absolute;top:6px;left:6px;background:#2b8a3e;color:#fff;font-size:.65rem;padding:.12rem .35rem;border-radius:999px}
     .thumb img{width:100%;height:auto;border-radius:6px;display:block;cursor:zoom-in}
     .thumb label{display:flex;align-items:flex-start;gap:.35rem;margin:.35rem 0 0}
+    .thumb input[type="checkbox"]{
+      -webkit-appearance: checkbox;
+      appearance: checkbox;
+    }
     .thumb .name{font-size:.72rem;line-height:1.1;word-break:break-word;color:#444}
     .viewer{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:1000}
     .viewer.open{display:flex}
@@ -170,7 +174,7 @@ let currentViewerItem = null;
 let currentViewerIndex = -1;
 
 function selectedUrls() {
-  return Array.from(document.querySelectorAll('input[name="pick"]:checked')).map(x => x.value);
+  return Array.from(document.querySelectorAll('input.pick-toggle:checked')).map(x => x.value);
 }
 
 function openViewer(item) {
@@ -255,7 +259,8 @@ function renderGallery(images) {
     if (at !== bt) return bt.localeCompare(at);
     return (a.name || '').localeCompare(b.name || '');
   });
-  for (const img of ordered) {
+  for (let i = 0; i < ordered.length; i++) {
+    const img = ordered[i];
     const card = document.createElement('div');
     card.className = 'thumb';
     if (img.uploaded_to_shopify) card.classList.add('uploaded');
@@ -267,8 +272,9 @@ function renderGallery(images) {
 
     const label = document.createElement('label');
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.name = 'pick';
+    cb.setAttribute('type', 'checkbox');
+    cb.className = 'pick-toggle';
+    cb.name = `pick_${i}`;
     cb.value = img.url;
     const span = document.createElement('span');
     span.className = 'name';
