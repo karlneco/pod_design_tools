@@ -10,6 +10,7 @@ import shutil
 import httpx
 from threading import Thread
 from urllib.parse import urlparse
+from werkzeug.utils import secure_filename
 
 from ..utils.mockups import generate_mockups_for_design
 from ..services.openai_svc import suggest_description, suggest_lifestyle_prompt
@@ -726,9 +727,112 @@ def _find_design_for_template(
     return fallback_src
 
 
+def _humanize_color_stem(value: str) -> str:
+    parts = [p for p in str(value or "").replace("_", " ").replace("-", " ").split() if p]
+    if not parts:
+        return "mockup"
+    return " ".join(p.capitalize() for p in parts)
+
+
+def _choose_manual_mockup_stem(raw_stem: str, preferred_colors: list[str]) -> str:
+    norm_raw = _normalize_str(raw_stem)
+    if not norm_raw:
+        return "mockup"
+
+    by_norm = {}
+    for c in preferred_colors or []:
+        text = str(c or "").strip()
+        if text:
+            by_norm[_normalize_str(text)] = text
+
+    if norm_raw in by_norm:
+        return by_norm[norm_raw]
+
+    try:
+        import difflib
+        match = difflib.get_close_matches(norm_raw, list(by_norm.keys()), n=1, cutoff=0.7)
+        if match:
+            return by_norm[match[0]]
+    except Exception:
+        pass
+
+    return _humanize_color_stem(raw_stem)
+
+
 # -----------------------------
 # Shopify: upload images + cache product list
 # -----------------------------
+@bp.post("/shopify/products/<product_id>/manual_mockups")
+def api_shopify_upload_manual_mockups(product_id: str):
+    def _rel_or_abs(path: Path) -> str:
+        try:
+            return str(path.relative_to(Config.BASE_DIR))
+        except Exception:
+            return str(path)
+
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"error": "No files uploaded. Use multipart/form-data with one or more 'files' fields."}), 400
+
+    replace_existing = str(request.form.get("replace_existing", "true")).strip().lower() in ("1", "true", "yes", "on")
+    out_dir = Config.PRODUCT_MOCKUPS_DIR / str(product_id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if replace_existing:
+        for p in out_dir.iterdir():
+            if p.is_file() and p.suffix.lower() in Config.ALLOWED_EXTS:
+                p.unlink(missing_ok=True)
+
+    preferred_colors = []
+    variants = _get_shopify_variants(product_id)
+    for v in variants:
+        c = _extract_color_from_variant(v)
+        if c:
+            c = str(c).strip()
+            if c and c not in preferred_colors:
+                preferred_colors.append(c)
+
+    saved = []
+    rejected = []
+    for f in files:
+        original_name = secure_filename(f.filename or "")
+        stem = Path(original_name).stem
+        ext = Path(original_name).suffix.lower()
+
+        if not ext and f.mimetype:
+            if "png" in f.mimetype:
+                ext = ".png"
+            elif "jpeg" in f.mimetype or "jpg" in f.mimetype:
+                ext = ".jpg"
+            elif "webp" in f.mimetype:
+                ext = ".webp"
+
+        if ext not in Config.ALLOWED_EXTS:
+            rejected.append({"file": f.filename or "", "error": f"Unsupported extension '{ext or '(none)'}'"})
+            continue
+
+        target_stem = _choose_manual_mockup_stem(stem, preferred_colors)
+        target = out_dir / f"{target_stem}{ext}"
+        f.save(target)
+        saved.append({
+            "original": f.filename,
+            "saved_as": _rel_or_abs(target),
+            "matched_color": target_stem if target_stem in preferred_colors else None,
+        })
+
+    if not saved:
+        return jsonify({"error": "No valid files uploaded", "rejected": rejected}), 400
+
+    return jsonify({
+        "ok": True,
+        "saved": saved,
+        "rejected": rejected,
+        "saved_count": len(saved),
+        "folder": _rel_or_abs(out_dir),
+        "replace_existing": replace_existing,
+    })
+
+
 @bp.post("/shopify/products/<product_id>/images")
 def shopify_upload_images(product_id):
     payload = request.json or {}

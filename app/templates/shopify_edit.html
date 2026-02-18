@@ -105,9 +105,11 @@
       {% if has_mockups %}
         <button id="genMockups" type="button">See mockups ({{ mockups_count }})</button>
         <button id="regenMockups" type="button" class="secondary">Regenerate mockups</button>
+        <a href="/shopify/products/{{ p.id }}/mockups/manual" role="button" class="secondary">Upload manual mockups</a>
         <small id="mockupStatus" class="muted" style="display:block;margin-top:.5rem">You already have {{ mockups_count }} mockup(s).</small>
       {% else %}
         <button id="genMockups" type="button">Generate flat-lay mockups</button>
+        <a href="/shopify/products/{{ p.id }}/mockups/manual" role="button" class="secondary">Upload manual mockups</a>
         <small id="mockupStatus" class="muted"></small>
       {% endif %}
     </div>

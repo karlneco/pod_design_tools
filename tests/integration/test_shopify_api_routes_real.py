@@ -5,6 +5,7 @@ These tests use Flask's test client to make actual HTTP requests to routes,
 but mock external dependencies (Shopify API, storage).
 """
 import json
+import io
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
@@ -480,6 +481,45 @@ class TestShopifyProductMockupGeneration:
 
             # Should fail with missing data - accepts 400, 404, or 500
             assert response.status_code in [400, 404, 500]
+
+
+@pytest.mark.integration
+class TestShopifyManualMockupUploads:
+    """Tests for manual mockup upload route."""
+
+    def test_upload_manual_mockups_saves_under_product_mockups(self, client, tmp_path):
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', tmp_path / "product_mockups"), \
+             patch('app.routes.shopify_api._get_shopify_variants') as mock_variants:
+            mock_variants.return_value = [
+                {"id": 1, "option1": "Dark Heather Grey", "is_enabled": True},
+            ]
+
+            response = client.post(
+                '/api/shopify/products/12345/manual_mockups',
+                data={
+                    'replace_existing': 'true',
+                    'files': [
+                        (io.BytesIO(b'fake-image-bytes'), 'dark-heather-grey.png'),
+                    ],
+                },
+                content_type='multipart/form-data'
+            )
+
+            assert response.status_code == 200
+            payload = response.get_json()
+            assert payload["ok"] is True
+            assert payload["saved_count"] == 1
+            assert (tmp_path / "product_mockups" / "12345" / "Dark Heather Grey.png").exists()
+
+    def test_upload_manual_mockups_requires_files(self, client):
+        response = client.post(
+            '/api/shopify/products/12345/manual_mockups',
+            data={'replace_existing': 'true'},
+            content_type='multipart/form-data'
+        )
+        assert response.status_code == 400
+        payload = response.get_json()
+        assert "error" in payload
 
 
 @pytest.mark.integration

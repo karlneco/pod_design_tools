@@ -398,6 +398,29 @@ def shopify_product_mockups(product_id: str):
     return render_template('shopify_mockups.html', id=product_id, mockups=mockups, design_slug=design_slug)
 
 
+@bp.get('/products/<product_id>/mockups/manual')
+def shopify_product_manual_mockups(product_id: str):
+    cached = (store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or
+              store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id)) or {})
+    product = _normalize(cached) if cached else {"id": str(product_id), "title": "(not found)"}
+    color_options = _extract_product_colors(product)
+    folder = Config.ASSETS_DIR / 'product_mockups' / str(product_id)
+    existing = []
+    if folder.exists():
+        for p in sorted(folder.iterdir()):
+            if p.suffix.lower() in Config.ALLOWED_EXTS:
+                try:
+                    existing.append(str(p.relative_to(Config.ASSETS_DIR)))
+                except Exception:
+                    existing.append(str(p.name))
+    return render_template(
+        'shopify_manual_mockups.html',
+        p=product,
+        color_options=color_options,
+        existing_mockups=existing,
+    )
+
+
 @bp.get("/products/<product_id>/lifestyle")
 def shopify_product_lifestyle(product_id: str):
     cached = (store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id) or

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Upload Manual Mockups</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <style>
+    .muted { color: #666; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-top:1rem; }
+    .card { border:1px solid #eee; border-radius:8px; padding:.5rem; text-align:center; }
+    .card img { width:100%; height:auto; border-radius:6px; }
+    @media (max-width: 700px) { .row { flex-direction:column; align-items:stretch !important; } }
+  </style>
+</head>
+<body class="container">
+<header style="display:flex;justify-content:space-between;align-items:center;">
+  <h1>Upload Manual Mockups</h1>
+  <nav>
+    <a href="/shopify/products/{{ p.id }}/edit">Back to product</a>
+    <a href="/shopify/products/{{ p.id }}/mockups" class="secondary">Preview mockups</a>
+  </nav>
+</header>
+
+<p><b>{{ p.title }}</b> ({{ p.id }})</p>
+<p class="muted">Files are saved to <code>assets/product_mockups/{{ p.id }}</code>, then uploaded with the same Shopify flow used by generated mockups (WebP conversion, color/default image handling).</p>
+
+{% if color_options %}
+  <p class="muted">Known product colors: {{ color_options | join(', ') }}</p>
+{% endif %}
+
+<form id="manualForm" enctype="multipart/form-data">
+  <label>
+    Mockup image files
+    <input type="file" id="files" name="files" accept=".png,.jpg,.jpeg,.webp,image/*" multiple required/>
+  </label>
+  <label style="display:flex;gap:.5rem;align-items:center;">
+    <input type="checkbox" id="replaceExisting" name="replace_existing" checked/>
+    <span>Replace existing saved mockups first</span>
+  </label>
+  <div class="row" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+    <button type="submit">Upload + Sync to Shopify</button>
+    <small id="status" class="muted"></small>
+  </div>
+</form>
+
+{% if existing_mockups %}
+  <h3 style="margin-top:1.2rem;">Current saved mockups</h3>
+  <div class="grid">
+    {% for m in existing_mockups %}
+      <article class="card">
+        <img src="/assets/{{ m }}" alt="{{ m.split('/')[-1] }}"/>
+        <div class="muted" style="margin-top:.35rem;font-size:.9rem;">{{ m.split('/')[-1] }}</div>
+      </article>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<script>
+document.getElementById('manualForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const productId = "{{ p.id }}";
+  const status = document.getElementById('status');
+  const filesInput = document.getElementById('files');
+  const replaceExisting = document.getElementById('replaceExisting').checked;
+
+  if (!filesInput.files || !filesInput.files.length) {
+    status.textContent = 'Please choose at least one file.';
+    return;
+  }
+
+  status.textContent = 'Uploading files...';
+  const form = new FormData();
+  for (const f of filesInput.files) form.append('files', f);
+  form.append('replace_existing', replaceExisting ? 'true' : 'false');
+
+  try {
+    const uploadRes = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/manual_mockups`, {
+      method: 'POST',
+      body: form
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
+
+    status.textContent = 'Syncing to Shopify...';
+    const syncRes = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/apply_generated_mockups`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+    const syncData = await syncRes.json();
+    if (!syncRes.ok) throw new Error(syncData.error || 'Shopify sync failed');
+
+    const count = (syncData.uploaded || []).length;
+    status.textContent = `Done. Uploaded ${count} image(s) to Shopify. Redirecting to preview...`;
+    setTimeout(() => {
+      window.location.href = `/shopify/products/${encodeURIComponent(productId)}/mockups`;
+    }, 800);
+  } catch (err) {
+    status.textContent = `Error: ${err.message}`;
+  }
+});
+</script>
+</body>
+</html>
