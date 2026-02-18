@@ -49,3 +49,8 @@ coverage.xml
 
 # Generated lifestyle images (do not commit)
 data/designs/shopify-*/lifestyle/
+
+# Local generated/cached design assets and product caches
+data/designs/
+data/printify_products.json
+data/shopify_products.json
