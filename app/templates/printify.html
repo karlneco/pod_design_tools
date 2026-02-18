@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Printify Products</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="stylesheet" href="/static/ui.css" />
   <style>
-    header { display:flex; justify-content:space-between; align-items:center; }
     .grid { display:grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
-    .card { position:relative; padding: 1rem; border: 1px solid #eee; border-radius: 10px; margin-bottom: 1rem; }
+    .card { position:relative; margin-bottom: 1rem; }
     .status-pill { position:absolute; top:10px; right:10px; padding:0.25rem 0.6rem; border-radius:999px; font-size:0.8em; }
     .pill-published { background:#e6ffed; color:#036d19; border:1px solid #bdf2c7; }
     .pill-unpublished { background:#fff7e6; color:#8a5a00; border:1px solid #ffe0a3; }
@@ -16,15 +16,23 @@
     img.thumb { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border:1px solid #e6e6e6; }
   </style>
 </head>
-<body class="container">
-  <header>
-    <h1>Printify Products</h1>
-    <nav>
-      <a href="/">Dashboard</a>
-      <a href="/shopify">Shopify Products</a>
-      <a href="/personas">Personas</a>
-      <a href="/printify/new" role="button" class="secondary">New Product</a>
-      <button id="updateBtn">Update Cache</button>
+<body class="container app-theme">
+  <header class="app-topbar">
+    <div>
+      <h1>Printify Products</h1>
+      <p class="topbar-subtitle">Track and edit Printify catalog products in one view.</p>
+    </div>
+    <nav class="topbar-nav">
+      <div class="nav-main">
+        <a href="/">Dashboard</a>
+        <a href="/shopify">Shopify Products</a>
+        <a href="/printify" class="is-active" aria-current="page">Printify Products</a>
+        <a href="/personas">Personas</a>
+      </div>
+      <div class="nav-actions">
+        <a href="/printify/new" role="button" class="secondary">New Product</a>
+        <button id="updateBtn">Update Cache</button>
+      </div>
     </nav>
   </header>
 

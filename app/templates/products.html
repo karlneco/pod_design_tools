@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Shopify Products</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <link rel="stylesheet" href="/static/ui.css"/>
     <style>
         .grid {
             display: grid;
@@ -15,9 +16,6 @@
 
         .card {
             position: relative;
-            padding: 1rem;
-            border: 1px solid #eee;
-            border-radius: 10px;
             margin-bottom: 1rem;
         }
 
@@ -103,12 +101,6 @@
             text-overflow: ellipsis;
         }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
         .muted {
             color: #666;
             font-size: 0.9em;
@@ -186,13 +178,22 @@
     {%- endif -%}
 {%- endmacro %}
 
-<body class="container">
-<header>
-    <h1>Shopify Products</h1>
-    <nav>
-        <a href="/">Dashboard</a>
-        <a href="/personas">Personas</a>
-        <button id="updateBtn">Update Cache</button>
+<body class="container app-theme">
+<header class="app-topbar">
+    <div>
+        <h1>Shopify Products</h1>
+        <p class="topbar-subtitle">Manage listings, mockups, and synchronized media.</p>
+    </div>
+    <nav class="topbar-nav">
+        <div class="nav-main">
+            <a href="/">Dashboard</a>
+            <a href="/shopify" class="is-active" aria-current="page">Shopify Products</a>
+            <a href="/printify">Printify Products</a>
+            <a href="/personas">Personas</a>
+        </div>
+        <div class="nav-actions">
+            <button id="updateBtn">Update Cache</button>
+        </div>
     </nav>
 </header>
 

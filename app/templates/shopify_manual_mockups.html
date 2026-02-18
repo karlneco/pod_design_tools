@@ -5,17 +5,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Upload Manual Mockups</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <link rel="stylesheet" href="/static/ui.css"/>
   <style>
     .muted { color: #666; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-top:1rem; }
-    .card { border:1px solid #eee; border-radius:8px; padding:.5rem; text-align:center; }
+    .card { padding:.7rem; text-align:center; }
     .card img { width:100%; height:auto; border-radius:6px; }
     @media (max-width: 700px) { .row { flex-direction:column; align-items:stretch !important; } }
   </style>
 </head>
-<body class="container">
-<header style="display:flex;justify-content:space-between;align-items:center;">
-  <h1>Upload Manual Mockups</h1>
+<body class="container app-theme">
+<header class="app-topbar">
+  <div>
+    <h1>Upload Manual Mockups</h1>
+    <p class="topbar-subtitle">Replace generated files with curated product mockups.</p>
+  </div>
   <nav>
     <a href="/shopify/products/{{ p.id }}/edit">Back to product</a>
     <a href="/personas">Personas</a>

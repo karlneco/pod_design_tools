@@ -5,17 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>New Printify Product — Pick a Template</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="stylesheet" href="/static/ui.css" />
   <style>
-    header { display:flex; justify-content:space-between; align-items:center; }
-    .card { padding: 1rem; border: 1px solid #eee; border-radius: 10px; margin-bottom: 1rem; }
+    .card { margin-bottom: 1rem; }
     .grid { display:grid; grid-template-columns: 160px 1fr auto; gap: 1rem; align-items:center; }
     img.thumb { width: 160px; height: 160px; object-fit: cover; border-radius: 8px; border:1px solid #e6e6e6; }
   </style>
 </head>
-<body class="container">
-  <header>
-    <h1>New Printify Product</h1>
+<body class="container app-theme">
+  <header class="app-topbar">
+    <div>
+      <h1>New Printify Product</h1>
+      <p class="topbar-subtitle">Duplicate a template and prepare it for storefront sync.</p>
+    </div>
     <nav>
+      <a href="/">Dashboard</a>
+      <a href="/shopify">Shopify Products</a>
+      <a href="/personas">Personas</a>
       <a href="/printify">Back to Printify</a>
     </nav>
   </header>

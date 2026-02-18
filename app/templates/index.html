@@ -5,23 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kozakura POD Manager</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="stylesheet" href="/static/ui.css" />
   <style>
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     img.thumb { max-width: 100%; height: auto; border-radius: 8px; }
     .tag { background:#eef; padding:0.25rem 0.5rem; border-radius:999px; margin-right:0.25rem; }
-    nav a { margin-right: 1rem; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body class="container">
-  <h1>Kozakura POD Manager</h1>
-
-  <nav>
-    <a href="/">Dashboard</a>
-    <a href="/shopify">Shopify Products</a>
-    <a href="/printify">Printify Products</a>
-    <a href="/personas">Personas</a>
-  </nav>
+<body class="container app-theme">
+  <header class="app-topbar">
+    <div>
+      <h1>Kozakura POD Manager</h1>
+      <p class="topbar-subtitle">Create designs, mockups, and store-ready product assets.</p>
+    </div>
+    <nav class="topbar-nav">
+      <div class="nav-main">
+        <a href="/" class="is-active" aria-current="page">Dashboard</a>
+        <a href="/shopify">Shopify Products</a>
+        <a href="/printify">Printify Products</a>
+        <a href="/personas">Personas</a>
+      </div>
+      <div class="nav-actions"></div>
+    </nav>
+  </header>
 
   <section>
     <h3>Create Design</h3>

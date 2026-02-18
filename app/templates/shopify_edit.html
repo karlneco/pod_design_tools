@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Edit Shopify Product</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <link rel="stylesheet" href="/static/ui.css"/>
   <style>
-    header{display:flex;justify-content:space-between;align-items:center}
     .grid{display:grid;grid-template-columns:260px 1fr;gap:1rem;align-items:start}
-    .card{border:1px solid #eee;border-radius:10px;padding:1rem}
     .muted{color:#666}
     .tags{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.25rem}
     .tags span{background:#eef;padding:.2rem .5rem;border-radius:999px}
@@ -23,9 +22,12 @@
     @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
   </style>
 </head>
-<body class="container">
-<header>
-  <h1>Edit Shopify Product</h1>
+<body class="container app-theme">
+<header class="app-topbar">
+  <div>
+    <h1>Edit Shopify Product</h1>
+    <p class="topbar-subtitle">Update product content, images, and publishing state.</p>
+  </div>
   <nav>
     <a href="/shopify">Back to list</a>
     <a href="/personas">Personas</a>

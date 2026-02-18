@@ -5,22 +5,30 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Personas</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <link rel="stylesheet" href="/static/ui.css"/>
   <style>
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.8rem}
-    .card{border:1px solid #e6e6e6;border-radius:10px;padding:.7rem}
+    .card{padding:.9rem}
     .card img{width:100%;height:auto;border-radius:8px}
     .muted{color:#666}
     @media (max-width:900px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
-<body class="container">
-<header style="display:flex;justify-content:space-between;align-items:center;">
-  <h1>Personas</h1>
-  <nav>
-    <a href="/">Dashboard</a>
-    <a href="/shopify">Shopify Products</a>
-    <a href="/printify">Printify Products</a>
+<body class="container app-theme">
+<header class="app-topbar">
+  <div>
+    <h1>Personas</h1>
+    <p class="topbar-subtitle">Create, edit, and generate reusable lifestyle personas.</p>
+  </div>
+  <nav class="topbar-nav">
+    <div class="nav-main">
+      <a href="/">Dashboard</a>
+      <a href="/shopify">Shopify Products</a>
+      <a href="/printify">Printify Products</a>
+      <a href="/personas" class="is-active" aria-current="page">Personas</a>
+    </div>
+    <div class="nav-actions"></div>
   </nav>
 </header>
 

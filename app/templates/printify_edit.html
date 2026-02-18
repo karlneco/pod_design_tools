@@ -5,13 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Edit Printify Product</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <link rel="stylesheet" href="/static/ui.css"/>
     <style>
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
         form {
             max-width: 1000px;
         }
@@ -116,10 +111,16 @@
         }
     </style>
 </head>
-<body class="container">
-<header>
-    <h1>Edit Printify Product</h1>
+<body class="container app-theme">
+<header class="app-topbar">
+    <div>
+        <h1>Edit Printify Product</h1>
+        <p class="topbar-subtitle">Fine-tune variants, visuals, and sync details.</p>
+    </div>
     <nav>
+        <a href="/">Dashboard</a>
+        <a href="/shopify">Shopify Products</a>
+        <a href="/personas">Personas</a>
         <a href="/printify">Printify Products</a>
     </nav>
 </header>

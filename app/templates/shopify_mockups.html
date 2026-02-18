@@ -5,15 +5,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Mockups Preview</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <link rel="stylesheet" href="/static/ui.css"/>
   <style>
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
-    .card{padding:0.5rem;border:1px solid #eee;border-radius:8px;text-align:center}
+    .card{padding:0.65rem;text-align:center}
     img{max-width:100%;height:auto;border-radius:6px}
   </style>
 </head>
-<body class="container">
-<header>
-  <h1>Mockups for product {{ id }}</h1>
+<body class="container app-theme">
+<header class="app-topbar">
+  <div>
+    <h1>Mockups for Product {{ id }}</h1>
+    <p class="topbar-subtitle">Review generated or manual mockups before syncing.</p>
+  </div>
   <nav>
     <a href="/shopify/products/{{ id }}/edit">← Back</a>
     <a href="/personas">Personas</a>
