@@ -1,7 +1,8 @@
 import os
+import math
 from datetime import datetime
 
-from flask import Blueprint, render_template, current_app, send_from_directory, make_response
+from flask import Blueprint, render_template, current_app, send_from_directory, make_response, request, url_for
 
 from ..extensions import store, shopify_client as shopify, printify_client as printify
 from .. import Config
@@ -42,7 +43,45 @@ def products_page():
             return datetime.min
 
     products = sorted(products, key=_ts, reverse=True)
-    return render_template("products.html", products=products, store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"))
+    total_items = len(products)
+    per_page = 20
+    show_all = str(request.args.get("show_all", "")).lower() in ("1", "true", "yes", "on")
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except Exception:
+        page = 1
+
+    if show_all:
+        paged_products = products
+        total_pages = 1
+        page = 1
+    else:
+        total_pages = max(1, math.ceil(total_items / per_page))
+        page = min(page, total_pages)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paged_products = products[start:end]
+
+    pager = {
+        "page": page,
+        "per_page": per_page,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "show_all": show_all,
+        "has_prev": (not show_all) and page > 1,
+        "has_next": (not show_all) and page < total_pages,
+        "prev_url": url_for("shopify_pages.products_page", page=max(1, page - 1)) if (not show_all and page > 1) else None,
+        "next_url": url_for("shopify_pages.products_page", page=page + 1) if (not show_all and page < total_pages) else None,
+        "show_all_url": url_for("shopify_pages.products_page", show_all=1),
+        "paged_url": url_for("shopify_pages.products_page"),
+    }
+
+    return render_template(
+        "products.html",
+        products=paged_products,
+        pager=pager,
+        store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"),
+    )
 
 
 @bp.get("/shopify/products/placeholder/<product_id>")

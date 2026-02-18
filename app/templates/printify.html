@@ -14,6 +14,22 @@
     .pill-unpublished { background:#fff7e6; color:#8a5a00; border:1px solid #ffe0a3; }
     .muted { color:#666; font-size:0.9em; }
     img.thumb { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border:1px solid #e6e6e6; }
+    .pager {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:.6rem;
+      margin:0 0 1rem;
+      padding:.75rem .9rem;
+      border:1px solid #d9dfe8;
+      border-radius:12px;
+      background:#f7f9fc;
+    }
+    .pager-info { font-size:.9rem; color:#516073; }
+    .pager-actions { display:flex; align-items:center; flex-wrap:wrap; gap:.45rem; }
+    .pager-jumps { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem; }
+    .pager-jumps .ellipsis { color:#768398; padding:0 .2rem; font-weight:700; }
   </style>
 </head>
 <body class="container app-theme">
@@ -41,6 +57,50 @@
   {% endif %}
 
   <main>
+    {% if pager %}
+      <div class="pager">
+        <div class="pager-info">
+          {% if pager.show_all %}
+            Showing all {{ pager.total_items }} products
+          {% else %}
+            Page {{ pager.page }} of {{ pager.total_pages }} ({{ pager.total_items }} total)
+          {% endif %}
+        </div>
+        <div class="pager-actions">
+          {% if pager.has_prev %}
+            <a href="{{ pager.prev_url }}" role="button" class="secondary">← Prev</a>
+          {% else %}
+            <button type="button" class="secondary" disabled>← Prev</button>
+          {% endif %}
+          {% if not pager.show_all and pager.total_pages > 1 %}
+          <div class="pager-jumps">
+            <a href="{{ url_for('printify_pages.printify_page', page=1) }}" role="button" class="{{ 'primary' if pager.page == 1 else 'secondary' }}">1</a>
+            {% set window_start = [2, pager.page - 1] | max %}
+            {% set window_end = [pager.total_pages - 1, pager.page + 3] | min %}
+            {% if window_start > 2 %}<span class="ellipsis">…</span>{% endif %}
+            {% for n in range(window_start, window_end + 1) %}
+              <a href="{{ url_for('printify_pages.printify_page', page=n) }}" role="button" class="{{ 'primary' if n == pager.page else 'secondary' }}">{{ n }}</a>
+            {% endfor %}
+            {% if window_end < pager.total_pages - 1 %}<span class="ellipsis">…</span>{% endif %}
+            {% if pager.total_pages > 1 %}
+              <a href="{{ url_for('printify_pages.printify_page', page=pager.total_pages) }}" role="button" class="{{ 'primary' if pager.page == pager.total_pages else 'secondary' }}">{{ pager.total_pages }}</a>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% if pager.has_next %}
+            <a href="{{ pager.next_url }}" role="button" class="secondary">Next →</a>
+          {% else %}
+            <button type="button" class="secondary" disabled>Next →</button>
+          {% endif %}
+          {% if pager.show_all %}
+            <a href="{{ pager.paged_url }}" role="button" class="secondary">Paged view</a>
+          {% else %}
+            <a href="{{ pager.show_all_url }}" role="button" class="secondary">Show all</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
     {% for p in items %}
       <article class="card">
         <span class="status-pill {{ 'pill-published' if p.published else 'pill-unpublished' }}">{{ 'Published' if p.published else 'Unpublished' }}</span>
@@ -68,6 +128,33 @@
         </div>
       </article>
     {% endfor %}
+
+    {% if pager and not pager.show_all and pager.total_pages > 1 %}
+      <div class="pager" style="margin-top:1rem;">
+        <div class="pager-info">Page {{ pager.page }} of {{ pager.total_pages }}</div>
+        <div class="pager-actions">
+          {% if pager.has_prev %}
+            <a href="{{ pager.prev_url }}" role="button" class="secondary">← Prev</a>
+          {% endif %}
+          <div class="pager-jumps">
+            <a href="{{ url_for('printify_pages.printify_page', page=1) }}" role="button" class="{{ 'primary' if pager.page == 1 else 'secondary' }}">1</a>
+            {% set window_start = [2, pager.page - 1] | max %}
+            {% set window_end = [pager.total_pages - 1, pager.page + 3] | min %}
+            {% if window_start > 2 %}<span class="ellipsis">…</span>{% endif %}
+            {% for n in range(window_start, window_end + 1) %}
+              <a href="{{ url_for('printify_pages.printify_page', page=n) }}" role="button" class="{{ 'primary' if n == pager.page else 'secondary' }}">{{ n }}</a>
+            {% endfor %}
+            {% if window_end < pager.total_pages - 1 %}<span class="ellipsis">…</span>{% endif %}
+            {% if pager.total_pages > 1 %}
+              <a href="{{ url_for('printify_pages.printify_page', page=pager.total_pages) }}" role="button" class="{{ 'primary' if pager.page == pager.total_pages else 'secondary' }}">{{ pager.total_pages }}</a>
+            {% endif %}
+          </div>
+          {% if pager.has_next %}
+            <a href="{{ pager.next_url }}" role="button" class="secondary">Next →</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
   </main>
 
 <script>

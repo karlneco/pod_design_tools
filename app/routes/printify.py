@@ -1,5 +1,6 @@
 import os
-from flask import Blueprint, render_template, jsonify
+import math
+from flask import Blueprint, render_template, jsonify, request, url_for
 
 from ..extensions import store, printify_client as printify
 
@@ -17,7 +18,45 @@ def printify_page():
         return p.get("updated_at") or p.get("created_at") or ""
 
     items = sorted(items, key=_ts, reverse=True)
-    return render_template("printify.html", items=items, store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"))
+    total_items = len(items)
+    per_page = 20
+    show_all = str(request.args.get("show_all", "")).lower() in ("1", "true", "yes", "on")
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except Exception:
+        page = 1
+
+    if show_all:
+        paged_items = items
+        total_pages = 1
+        page = 1
+    else:
+        total_pages = max(1, math.ceil(total_items / per_page))
+        page = min(page, total_pages)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paged_items = items[start:end]
+
+    pager = {
+        "page": page,
+        "per_page": per_page,
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "show_all": show_all,
+        "has_prev": (not show_all) and page > 1,
+        "has_next": (not show_all) and page < total_pages,
+        "prev_url": url_for("printify_pages.printify_page", page=max(1, page - 1)) if (not show_all and page > 1) else None,
+        "next_url": url_for("printify_pages.printify_page", page=page + 1) if (not show_all and page < total_pages) else None,
+        "show_all_url": url_for("printify_pages.printify_page", show_all=1),
+        "paged_url": url_for("printify_pages.printify_page"),
+    }
+
+    return render_template(
+        "printify.html",
+        items=paged_items,
+        pager=pager,
+        store_domain=os.getenv("SHOPIFY_STORE_DOMAIN"),
+    )
 
 
 @bp.get("/printify/edit/<product_id>")
@@ -334,5 +373,4 @@ def printify_new():
     # Sort alphabetically
     templates = sorted(templates, key=lambda x: (x.get("title") or "").lower())
     return render_template("printify_new.html", templates=templates)
-
 
