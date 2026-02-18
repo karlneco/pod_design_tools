@@ -25,6 +25,8 @@ def create_app(config_class: type[Config] = Config):
     from .routes.ai import bp as ai_api
     from .routes.mockups import bp as mockups_pages
     from .routes.mockups_api import bp as mockups_api
+    from .routes.personas import bp as personas_pages
+    from .routes.personas_api import bp as personas_api
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(api, url_prefix="/api")
@@ -37,5 +39,7 @@ def create_app(config_class: type[Config] = Config):
     app.register_blueprint(ai_api, url_prefix="/api")
     app.register_blueprint(mockups_pages)
     app.register_blueprint(mockups_api, url_prefix="/api")
+    app.register_blueprint(personas_pages)
+    app.register_blueprint(personas_api, url_prefix="/api")
 
     return app

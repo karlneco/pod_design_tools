@@ -42,6 +42,7 @@
   <h1>Lifestyle Images</h1>
   <nav>
     <a href="/shopify/products/{{ p.id }}/edit">Back to product</a>
+    <a href="/personas">Personas</a>
   </nav>
 </header>
 
@@ -91,7 +92,7 @@
       <select id="personSelection">
         {% set default_person = lifestyle_defaults.get('person_selection') or 'generic_female' %}
         {% for person in personas %}
-          <option value="{{ person.key }}" data-image="{{ person.image or '' }}" {% if person.key == default_person %}selected{% endif %}>{{ person.label }}</option>
+          <option value="{{ person.key }}" data-image="{{ person.image or '' }}" data-age-options='{{ (person.age_options or []) | tojson | forceescape }}' {% if person.key == default_person %}selected{% endif %}>{{ person.label }}</option>
         {% endfor %}
       </select>
     </label>
@@ -153,6 +154,8 @@
 <script>
 const personSelection = document.getElementById('personSelection');
 const personaPreview = document.getElementById('personaPreview');
+const ageSegmentEl = document.getElementById('ageSegment');
+const defaultAgeSegments = {{ age_segments | tojson }};
 const statusEl = document.getElementById('status');
 const galleryEl = document.getElementById('gallery');
 const viewerEl = document.getElementById('viewer');
@@ -231,7 +234,7 @@ viewerReuse.addEventListener('click', () => {
   setIf('garmentColor', meta.garment_color);
   setIf('printLocation', meta.print_location);
   setIf('personSelection', meta.person_selection);
-  setIf('ageSegment', meta.age_segment);
+  updateAgeOptionsForPersona(meta.age_segment);
   if (meta.art_direction) document.getElementById('artDirection').value = meta.art_direction;
   if (meta.num_images) document.getElementById('numImages').value = Number(meta.num_images);
   updatePersonaPreview();
@@ -294,8 +297,29 @@ function updatePersonaPreview() {
   personaPreview.src = img;
   personaPreview.style.display = 'block';
 }
+
+function updateAgeOptionsForPersona(preferredValue) {
+  const opt = personSelection.options[personSelection.selectedIndex];
+  let options = defaultAgeSegments;
+  try {
+    const parsed = JSON.parse(opt?.dataset?.ageOptions || "[]");
+    if (Array.isArray(parsed) && parsed.length) options = parsed;
+  } catch (_) {}
+  const current = preferredValue || ageSegmentEl.value;
+  ageSegmentEl.innerHTML = "";
+  for (const seg of options) {
+    const o = document.createElement('option');
+    o.value = seg;
+    o.textContent = seg;
+    ageSegmentEl.appendChild(o);
+  }
+  if (current && options.includes(current)) ageSegmentEl.value = current;
+  else if (options.length) ageSegmentEl.value = options[0];
+}
 personSelection.addEventListener('change', updatePersonaPreview);
+personSelection.addEventListener('change', () => updateAgeOptionsForPersona());
 updatePersonaPreview();
+updateAgeOptionsForPersona("{{ lifestyle_defaults.get('age_segment') or '35-44' }}");
 renderGallery(existingImages);
 
 function payloadBase() {

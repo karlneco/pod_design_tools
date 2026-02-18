@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Personas</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+  <style>
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.8rem}
+    .card{border:1px solid #e6e6e6;border-radius:10px;padding:.7rem}
+    .card img{width:100%;height:auto;border-radius:8px}
+    .muted{color:#666}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body class="container">
+<header style="display:flex;justify-content:space-between;align-items:center;">
+  <h1>Personas</h1>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/shopify">Shopify Products</a>
+    <a href="/printify">Printify Products</a>
+  </nav>
+</header>
+
+<main class="grid">
+  <section>
+    <article>
+      <h3>Create Persona</h3>
+      <form id="createForm" enctype="multipart/form-data">
+        <label>Name<input type="text" name="label" required/></label>
+        <label>Age segments (comma-separated)<input type="text" name="age_segments" value="{{ age_segments | join(', ') }}"/></label>
+        <label>Notes<textarea name="notes"></textarea></label>
+        <label>Photo<input type="file" name="photo" accept=".png,.jpg,.jpeg,.webp,image/*" required/></label>
+        <button type="submit">Create Persona</button>
+      </form>
+    </article>
+    <article>
+      <h3>Generate Persona</h3>
+      <p class="muted">Creates a neutral studio full-body “blank canvas” persona (white tee + jeans).</p>
+      <form id="genForm">
+        <label>Name<input type="text" name="label" required/></label>
+        <label>Age segments (comma-separated)<input type="text" name="age_segments" value="{{ age_segments | join(', ') }}"/></label>
+        <label>Persona brief<textarea name="brief" placeholder="e.g. Japanese woman, late 20s, short black hair, calm expression"></textarea></label>
+        <label>Notes<textarea name="notes"></textarea></label>
+        <button type="submit">Generate Persona</button>
+      </form>
+      <small id="status" class="muted"></small>
+    </article>
+  </section>
+  <section>
+    <article>
+      <h3>Manage Personas</h3>
+      <div id="cards" class="cards"></div>
+    </article>
+  </section>
+</main>
+
+<script>
+const cardsEl = document.getElementById('cards');
+const statusEl = document.getElementById('status');
+
+async function loadPersonas() {
+  const res = await fetch('/api/personas');
+  const data = await res.json();
+  cardsEl.innerHTML = '';
+  for (const p of (data.personas || [])) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img src="${p.image_url}" alt="${p.label}">
+      <p><b>${p.label}</b></p>
+      <p class="muted">Ages: ${(p.age_options || []).join(', ')}</p>
+      <p class="muted">Source: ${p.source || 'upload'}${p.active ? '' : ' (inactive)'}</p>
+      <label>Name<input type="text" value="${p.label || ''}" data-field="label"></label>
+      <label>Ages<input type="text" value="${(p.age_options || []).join(', ')}" data-field="age_segments"></label>
+      <label>Notes<textarea data-field="notes">${p.notes || ''}</textarea></label>
+      <label style="display:flex;gap:.5rem;align-items:center;">
+        <input type="checkbox" data-field="active" ${p.active ? 'checked' : ''}>
+        <span>Active</span>
+      </label>
+      <button data-act="save">Save</button>
+      <button data-act="delete" class="secondary">Delete</button>
+    `;
+    card.querySelector('[data-act="save"]').addEventListener('click', async () => {
+      const payload = {
+        label: card.querySelector('[data-field="label"]').value.trim(),
+        age_segments: card.querySelector('[data-field="age_segments"]').value.split(',').map(x => x.trim()).filter(Boolean),
+        notes: card.querySelector('[data-field="notes"]').value.trim(),
+        active: card.querySelector('[data-field="active"]').checked,
+      };
+      const r = await fetch(`/api/personas/${encodeURIComponent(p.id)}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Save failed');
+      loadPersonas();
+    });
+    card.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+      const yes = confirm(`Delete persona "${p.label}"?`);
+      if (!yes) return;
+      const r = await fetch(`/api/personas/${encodeURIComponent(p.id)}?delete_image=true`, { method: 'DELETE' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Delete failed');
+      loadPersonas();
+    });
+    cardsEl.appendChild(card);
+  }
+}
+
+document.getElementById('createForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const r = await fetch('/api/personas', { method: 'POST', body: fd });
+  const j = await r.json();
+  if (!r.ok) {
+    statusEl.textContent = `Error: ${j.error || 'Create failed'}`;
+    return;
+  }
+  statusEl.textContent = 'Created.';
+  e.target.reset();
+  loadPersonas();
+});
+
+document.getElementById('genForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = {
+    label: String(fd.get('label') || '').trim(),
+    age_segments: String(fd.get('age_segments') || '').split(',').map(x => x.trim()).filter(Boolean),
+    brief: String(fd.get('brief') || '').trim(),
+    notes: String(fd.get('notes') || '').trim(),
+  };
+  statusEl.textContent = 'Generating persona...';
+  const r = await fetch('/api/personas/generate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  });
+  const j = await r.json();
+  if (!r.ok) {
+    statusEl.textContent = `Error: ${j.error || 'Generation failed'}`;
+    return;
+  }
+  statusEl.textContent = 'Generated.';
+  e.target.reset();
+  loadPersonas();
+});
+
+loadPersonas();
+</script>
+</body>
+</html>

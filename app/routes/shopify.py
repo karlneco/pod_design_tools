@@ -7,6 +7,7 @@ from ..extensions import store, shopify_client as shopify, printify_client as pr
 from .. import Config
 from pathlib import Path
 from flask import render_template
+from ..utils.personas import list_personas, DEFAULT_AGE_SEGMENTS
 
 bp = Blueprint("shopify_pages", __name__)
 
@@ -197,22 +198,17 @@ def _resolve_design_slug_for_product(product_id: str) -> str | None:
 
 
 def _list_persona_options() -> list[dict]:
-    base = Config.ASSETS_DIR / "personas"
     out = [
-        {"key": "generic_female", "label": "Generic Female", "image": None},
-        {"key": "generic_male", "label": "Generic Male", "image": None},
+        {"key": "generic_female", "label": "Generic Female", "image": None, "age_options": DEFAULT_AGE_SEGMENTS},
+        {"key": "generic_male", "label": "Generic Male", "image": None, "age_options": DEFAULT_AGE_SEGMENTS},
     ]
-    if not base.exists():
-        return out
-    for p in sorted(base.iterdir()):
-        if p.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
-            continue
-        label = p.stem.replace("_", " ")
-        rel = str(p.relative_to(Config.ASSETS_DIR))
+    for p in list_personas(active_only=True):
         out.append({
-            "key": f"persona:{p.name}",
-            "label": label,
-            "image": f"/assets/{rel}",
+            "id": p.get("id"),
+            "key": p.get("key"),
+            "label": p.get("label"),
+            "image": p.get("image_url"),
+            "age_options": p.get("age_options") or DEFAULT_AGE_SEGMENTS,
         })
     return out
 
@@ -439,7 +435,7 @@ def shopify_product_lifestyle(product_id: str):
     color_options = _extract_product_colors(product)
     lifestyle_images = _list_lifestyle_images(product_id)
     lifestyle_defaults = cached.get("lifestyle_defaults") or {}
-    age_segments = ["13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"]
+    age_segments = DEFAULT_AGE_SEGMENTS
     html = render_template(
         "shopify_lifestyle.html",
         p=product,
