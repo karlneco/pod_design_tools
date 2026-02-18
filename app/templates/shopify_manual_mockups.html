@@ -57,6 +57,15 @@
 {% endif %}
 
 <script>
+async function parseJsonOrError(response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    throw new Error(`Server returned non-JSON (${response.status}): ${text.slice(0, 160)}`);
+  }
+}
+
 document.getElementById('manualForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const productId = "{{ p.id }}";
@@ -79,7 +88,7 @@ document.getElementById('manualForm').addEventListener('submit', async (e) => {
       method: 'POST',
       body: form
     });
-    const uploadData = await uploadRes.json();
+    const uploadData = await parseJsonOrError(uploadRes);
     if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
 
     status.textContent = 'Syncing to Shopify...';
@@ -88,7 +97,7 @@ document.getElementById('manualForm').addEventListener('submit', async (e) => {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({})
     });
-    const syncData = await syncRes.json();
+    const syncData = await parseJsonOrError(syncRes);
     if (!syncRes.ok) throw new Error(syncData.error || 'Shopify sync failed');
 
     const count = (syncData.uploaded || []).length;

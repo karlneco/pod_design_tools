@@ -1,5 +1,4 @@
 import os
-import shutil
 from datetime import datetime
 
 from flask import Blueprint, render_template, current_app, send_from_directory, make_response
@@ -252,29 +251,7 @@ def _lifestyle_root(product_id: str) -> Path:
     return Config.DATA_DIR / "designs" / f"shopify-{product_id}" / "lifestyle"
 
 
-def _migrate_lifestyle_assets_to_data(product_id: str) -> None:
-    old_root = Config.ASSETS_DIR / "lifestyle" / str(product_id)
-    new_root = _lifestyle_root(product_id)
-    if not old_root.exists():
-        return
-    new_root.mkdir(parents=True, exist_ok=True)
-    for src in old_root.rglob("*"):
-        if not src.is_file():
-            continue
-        rel = src.relative_to(old_root)
-        dst = new_root / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if dst.exists():
-            continue
-        try:
-            shutil.move(str(src), str(dst))
-        except Exception:
-            # Keep going for best-effort migration.
-            continue
-
-
 def _list_lifestyle_images(product_id: str) -> list[dict]:
-    _migrate_lifestyle_assets_to_data(product_id)
     base = _lifestyle_root(product_id)
     if not base.exists():
         return []
@@ -313,27 +290,10 @@ def _list_lifestyle_images(product_id: str) -> list[dict]:
 
 
 def _product_mockups_dir(product_id: str) -> Path:
-    """Return canonical product mockup dir, migrating known legacy locations."""
-    new_dir = Config.PRODUCT_MOCKUPS_DIR / f"shopify-{product_id}" / "mockups"
-    legacy_dirs = [
-        Config.ASSETS_DIR / "product_mockups" / str(product_id),
-        Config.DATA_DIR / "product_mockups" / str(product_id),
-    ]
-    for old_dir in legacy_dirs:
-        if not old_dir.exists():
-            continue
-        new_dir.mkdir(parents=True, exist_ok=True)
-        for src in old_dir.iterdir():
-            if not src.is_file() or src.suffix.lower() not in Config.ALLOWED_EXTS:
-                continue
-            dst = new_dir / src.name
-            if dst.exists():
-                continue
-            try:
-                shutil.copy2(src, dst)
-            except Exception:
-                continue
-    return new_dir
+    root = Config.PRODUCT_MOCKUPS_DIR
+    if not root.is_absolute():
+        root = (Config.BASE_DIR / root).resolve()
+    return root / f"shopify-{product_id}" / "mockups"
 
 
 def _get_printify_reference_images_for_shopify_product(product_id: str) -> list[str]:

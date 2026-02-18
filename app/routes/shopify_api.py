@@ -63,26 +63,6 @@ def _lifestyle_root(product_id: str) -> Path:
     return Config.DATA_DIR / "designs" / f"shopify-{product_id}" / "lifestyle"
 
 
-def _migrate_lifestyle_assets_to_data(product_id: str) -> None:
-    old_root = Config.ASSETS_DIR / "lifestyle" / str(product_id)
-    new_root = _lifestyle_root(product_id)
-    if not old_root.exists():
-        return
-    new_root.mkdir(parents=True, exist_ok=True)
-    for src in old_root.rglob("*"):
-        if not src.is_file():
-            continue
-        rel = src.relative_to(old_root)
-        dst = new_root / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if dst.exists():
-            continue
-        try:
-            shutil.move(str(src), str(dst))
-        except Exception:
-            continue
-
-
 def _resolve_printify_reference_image(
     product_id: str,
     garment_color: str,
@@ -94,7 +74,6 @@ def _resolve_printify_reference_image(
     """
     color_slug = _safe_slug(garment_color)
     loc = (print_location or "front").strip().lower()
-    _migrate_lifestyle_assets_to_data(product_id)
     refs_dir = _lifestyle_root(product_id) / "printify_refs"
     refs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -728,27 +707,10 @@ def _find_design_for_template(
 
 
 def _product_mockups_dir(product_id: str) -> Path:
-    """Canonical product mockup directory with migration from legacy locations."""
-    new_dir = Config.PRODUCT_MOCKUPS_DIR / f"shopify-{product_id}" / "mockups"
-    legacy_dirs = [
-        Config.ASSETS_DIR / "product_mockups" / str(product_id),
-        Config.DATA_DIR / "product_mockups" / str(product_id),
-    ]
-    for old_dir in legacy_dirs:
-        if not old_dir.exists():
-            continue
-        new_dir.mkdir(parents=True, exist_ok=True)
-        for src in old_dir.iterdir():
-            if not src.is_file() or src.suffix.lower() not in Config.ALLOWED_EXTS:
-                continue
-            dst = new_dir / src.name
-            if dst.exists():
-                continue
-            try:
-                shutil.copy2(src, dst)
-            except Exception:
-                continue
-    return new_dir
+    root = Config.PRODUCT_MOCKUPS_DIR
+    if not root.is_absolute():
+        root = (Config.BASE_DIR / root).resolve()
+    return root / f"shopify-{product_id}" / "mockups"
 
 
 def _humanize_color_stem(value: str) -> str:
@@ -1296,12 +1258,19 @@ def api_shopify_apply_generated_mockups(product_id: str):
         return jsonify({"error": "No Shopify variants found or could not resolve variant colors"}), 400
 
     # 4) Map variants to mockup files by normalized title -> stem path
+    def _to_base_rel_or_abs(p: Path) -> str:
+        abs_path = p if p.is_absolute() else (Config.BASE_DIR / p).resolve()
+        try:
+            return str(abs_path.relative_to(Config.BASE_DIR))
+        except Exception:
+            return str(abs_path)
+
     variants_to_file: dict[int, str] = {}
     unmatched_variants: list[int] = []
     for vid, title in variant_to_title_local.items():
         n = _norm_local(title)
         if n in stem_to_path:
-            variants_to_file[vid] = str(stem_to_path[n].relative_to(Config.BASE_DIR))
+            variants_to_file[vid] = _to_base_rel_or_abs(stem_to_path[n])
         else:
             unmatched_variants.append(vid)
 
@@ -1314,7 +1283,7 @@ def api_shopify_apply_generated_mockups(product_id: str):
                 n = _norm_local(variant_to_title_local.get(vid, ""))
                 matches = _difflib.get_close_matches(n, candidates, n=1, cutoff=0.65)
                 if matches:
-                    variants_to_file[vid] = str(stem_to_path[matches[0]].relative_to(Config.BASE_DIR))
+                    variants_to_file[vid] = _to_base_rel_or_abs(stem_to_path[matches[0]])
                     unmatched_variants.remove(vid)
         except Exception:
             pass
@@ -1798,7 +1767,6 @@ def api_shopify_lifestyle_generate(product_id: str):
         current_app.logger.exception("Lifestyle image generation failed for Shopify %s", product_id)
         return jsonify({"error": str(e)}), 500
 
-    _migrate_lifestyle_assets_to_data(product_id)
     out_dir = _lifestyle_root(product_id)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")

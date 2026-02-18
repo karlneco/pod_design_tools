@@ -25,5 +25,8 @@ def mockup_editor(slug: str):
 
 @bp.get("/designs/shopify-<product_id>/mockups/<path:filename>")
 def serve_product_mockup(product_id: str, filename: str):
-    dirpath = Config.PRODUCT_MOCKUPS_DIR / f"shopify-{product_id}" / "mockups"
+    root = Config.PRODUCT_MOCKUPS_DIR
+    if not root.is_absolute():
+        root = (Config.BASE_DIR / root).resolve()
+    dirpath = root / f"shopify-{product_id}" / "mockups"
     return send_from_directory(dirpath, filename)
