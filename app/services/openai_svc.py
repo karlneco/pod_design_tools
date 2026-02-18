@@ -72,6 +72,7 @@ LIFESTYLE_PROMPT_USER_PROMPT = (
     "- Print location: {print_location}\n"
     "- Person selection: {person_selection}\n"
     "- Age segment: {age_segment}\n"
+    "- Art direction (optional): {art_direction}\n"
     "- Number of requested images: {num_images}\n"
     "- A clean garment reference image from Printify WILL be provided to the image model.\n"
     "- There may also be a persona reference image.\n\n"
@@ -82,6 +83,7 @@ LIFESTYLE_PROMPT_USER_PROMPT = (
     "4) Do not describe the graphic content explicitly (no guessed slogans/details). Refer to it as the provided design.\n"
     "5) Shot framing must clearly show the printed area (waist-up or full-body as appropriate).\n"
     "6) Theme should be derived from product description mood/vibe.\n"
+    "6a) If art_direction is provided, prioritize it for scene/activity/setting choices.\n"
     "7) Activity and setting must be age-appropriate and realistic for the selected age segment.\n"
     "8) If person_selection is generic Male/Female, use a non-specific model.\n"
     "9) Include concise camera/composition guidance and lighting direction.\n"
@@ -219,6 +221,7 @@ def suggest_lifestyle_prompt(
     print_location: str,
     person_selection: str,
     age_segment: str,
+    art_direction: str = "",
     num_images: int,
 ) -> str:
     prompt = LIFESTYLE_PROMPT_USER_PROMPT.format(
@@ -229,6 +232,7 @@ def suggest_lifestyle_prompt(
         print_location=print_location or "front",
         person_selection=person_selection or "Generic Female",
         age_segment=age_segment or "35-44",
+        art_direction=(art_direction or "").strip(),
         num_images=max(1, int(num_images or 1)),
     )
     content = _chat([

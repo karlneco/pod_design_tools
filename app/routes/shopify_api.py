@@ -1684,6 +1684,7 @@ def api_shopify_lifestyle_prompt(product_id: str):
     print_location = (body.get("print_location") or "front").strip().lower()
     person_selection = (body.get("person_selection") or "generic_female").strip()
     age_segment = (body.get("age_segment") or "35-44").strip()
+    art_direction = (body.get("art_direction") or "").strip()
     num_images = int(body.get("num_images") or 1)
 
     if not garment_color:
@@ -1705,6 +1706,7 @@ def api_shopify_lifestyle_prompt(product_id: str):
             print_location=print_location,
             person_selection=person_label,
             age_segment=age_segment,
+            art_direction=art_direction,
             num_images=num_images,
         )
     except Exception as e:
@@ -1720,6 +1722,7 @@ def api_shopify_lifestyle_prompt(product_id: str):
             "print_location": print_location,
             "person_selection": person_selection,
             "age_segment": age_segment,
+            "art_direction": art_direction,
             "num_images": max(1, min(num_images, 10)),
         }
         store.upsert(SHOPIFY_PRODUCTS_COLLECTION, str(product_id), existing)
@@ -1737,6 +1740,7 @@ def api_shopify_lifestyle_generate(product_id: str):
     print_location = (body.get("print_location") or "front").strip().lower()
     garment_type = (body.get("garment_type") or "").strip()
     age_segment = (body.get("age_segment") or "").strip()
+    art_direction = (body.get("art_direction") or "").strip()
 
     if not prompt:
         return jsonify({"error": "prompt is required"}), 400
@@ -1782,6 +1786,7 @@ def api_shopify_lifestyle_generate(product_id: str):
         "print_location": print_location,
         "garment_type": garment_type,
         "age_segment": age_segment,
+        "art_direction": art_direction,
         "num_images": max(1, min(num_images, 10)),
     }
     for i, item in enumerate(generated, start=1):
@@ -1827,6 +1832,7 @@ def api_shopify_lifestyle_generate(product_id: str):
             "print_location": print_location,
             "person_selection": person_selection,
             "age_segment": age_segment,
+            "art_direction": art_direction,
             "num_images": max(1, min(num_images, 10)),
         }
         refs = existing.get("lifestyle_reference_images") or {}

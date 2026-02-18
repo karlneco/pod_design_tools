@@ -523,6 +523,79 @@ class TestShopifyManualMockupUploads:
 
 
 @pytest.mark.integration
+class TestShopifyLifestyleArtDirection:
+    """Tests for lifestyle art direction controls."""
+
+    def test_lifestyle_prompt_passes_art_direction(self, client):
+        with patch('app.routes.shopify_api.store') as mock_store, \
+             patch('app.routes.shopify_api.suggest_lifestyle_prompt') as mock_suggest:
+            mock_store.get.return_value = {
+                "id": 12345,
+                "title": "Test Product",
+                "description": "<p>Desc</p>",
+            }
+            mock_suggest.return_value = "Generated prompt text"
+
+            response = client.post(
+                '/api/shopify/products/12345/lifestyle/prompt',
+                data=json.dumps({
+                    "garment_type": "T-Shirt",
+                    "garment_color": "Black",
+                    "print_location": "front",
+                    "person_selection": "generic_female",
+                    "age_segment": "35-44",
+                    "art_direction": "winter scene",
+                    "num_images": 2,
+                }),
+                content_type='application/json'
+            )
+
+            assert response.status_code == 200
+            payload = response.get_json()
+            assert payload["prompt"] == "Generated prompt text"
+            assert mock_suggest.call_args.kwargs["art_direction"] == "winter scene"
+
+            saved = mock_store.upsert.call_args[0][2]
+            assert saved["lifestyle_defaults"]["art_direction"] == "winter scene"
+
+    def test_lifestyle_generate_saves_art_direction_meta(self, client, tmp_path):
+        ref_path = tmp_path / "ref.png"
+        ref_path.write_bytes(b"ref")
+        out_root = tmp_path / "lifestyle_out"
+
+        with patch('app.routes.shopify_api.store') as mock_store, \
+             patch('app.routes.shopify_api._resolve_printify_reference_image') as mock_ref, \
+             patch('app.routes.shopify_api.generate_lifestyle_images') as mock_gen, \
+             patch('app.routes.shopify_api._lifestyle_root') as mock_lifestyle_root:
+            mock_store.get.return_value = {"id": 12345, "title": "Test Product"}
+            mock_ref.return_value = (str(ref_path), "https://example.com/ref.png")
+            mock_gen.return_value = [{"bytes": b"fakeimg", "mime_type": "image/png"}]
+            mock_lifestyle_root.return_value = out_root
+
+            response = client.post(
+                '/api/shopify/products/12345/lifestyle/generate',
+                data=json.dumps({
+                    "prompt": "lifestyle prompt",
+                    "garment_type": "T-Shirt",
+                    "garment_color": "Black",
+                    "print_location": "front",
+                    "person_selection": "generic_female",
+                    "age_segment": "35-44",
+                    "art_direction": "cozy coffee shop",
+                    "num_images": 1,
+                }),
+                content_type='application/json'
+            )
+
+            assert response.status_code == 200
+            payload = response.get_json()
+            assert payload["images"][0]["meta"]["art_direction"] == "cozy coffee shop"
+
+            saved = mock_store.upsert.call_args[0][2]
+            assert saved["lifestyle_defaults"]["art_direction"] == "cozy coffee shop"
+
+
+@pytest.mark.integration
 class TestShopifyProductPublishing:
     """Tests for Shopify product publishing routes."""
 

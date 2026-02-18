@@ -41,6 +41,8 @@ coverage.xml
 
 # Env files
 .env
+*.swp
+*.swo
 
 # OS
 .DS_Store

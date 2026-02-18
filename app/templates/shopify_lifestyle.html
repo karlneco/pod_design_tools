@@ -107,6 +107,11 @@
     </label>
 
     <label>
+      Art direction (optional)
+      <input type="text" id="artDirection" placeholder="e.g. winter scene, cozy coffee shop, walking in the park" value="{{ lifestyle_defaults.get('art_direction') or '' }}"/>
+    </label>
+
+    <label>
       Number of images
       <input type="number" id="numImages" min="1" max="10" step="1" value="{{ lifestyle_defaults.get('num_images') or 3 }}"/>
     </label>
@@ -227,6 +232,7 @@ viewerReuse.addEventListener('click', () => {
   setIf('printLocation', meta.print_location);
   setIf('personSelection', meta.person_selection);
   setIf('ageSegment', meta.age_segment);
+  if (meta.art_direction) document.getElementById('artDirection').value = meta.art_direction;
   if (meta.num_images) document.getElementById('numImages').value = Number(meta.num_images);
   updatePersonaPreview();
   statusEl.textContent = 'Prompt and metadata loaded from image.';
@@ -299,6 +305,7 @@ function payloadBase() {
     print_location: document.getElementById('printLocation').value,
     person_selection: document.getElementById('personSelection').value,
     age_segment: document.getElementById('ageSegment').value,
+    art_direction: document.getElementById('artDirection').value.trim(),
     num_images: Number(document.getElementById('numImages').value || 1),
   };
 }
