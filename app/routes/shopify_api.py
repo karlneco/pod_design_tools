@@ -239,6 +239,103 @@ def _preferred_color_order(shop_product: dict) -> list[str]:
     return []
 
 
+def _build_images_payload_preserving_existing(
+    shop_product: dict | None,
+    new_image_variant_map: dict[int, list[int]],
+    replace_variant_ids: set[int] | None = None,
+) -> list[dict]:
+    """Build Shopify `images` payload without dropping unrelated product images.
+
+    - Keeps all existing images on the product.
+    - Removes only variant links listed in `replace_variant_ids`.
+    - Applies `new_image_variant_map` assignments to uploaded images.
+    """
+    replace_set = {int(v) for v in (replace_variant_ids or set())}
+    new_map = {int(k): [int(v) for v in (vals or [])] for k, vals in (new_image_variant_map or {}).items()}
+    payload: list[dict] = []
+    seen_ids: set[int] = set()
+
+    for im in ((shop_product or {}).get("images") or []):
+        try:
+            iid = int(im.get("id"))
+        except Exception:
+            continue
+        existing_vids = [int(v) for v in (im.get("variant_ids") or []) if str(v).isdigit()]
+        kept_vids = [v for v in existing_vids if v not in replace_set]
+        for v in new_map.get(iid, []):
+            if v not in kept_vids:
+                kept_vids.append(v)
+        payload.append({"id": iid, "variant_ids": kept_vids})
+        seen_ids.add(iid)
+
+    for iid, vids in new_map.items():
+        if iid in seen_ids:
+            continue
+        payload.append({"id": int(iid), "variant_ids": [int(v) for v in vids]})
+
+    return payload
+
+
+def _delete_images_linked_to_variants(product_id: str, shop_product: dict, variant_ids: set[int]) -> list[int]:
+    """Delete Shopify images currently linked to any of the given variants."""
+    targets = {int(v) for v in (variant_ids or set())}
+    if not targets:
+        return []
+    if not hasattr(shopify, "base") or not hasattr(shopify, "headers"):
+        return []
+
+    image_ids: set[int] = set()
+    for im in (shop_product.get("images") or []):
+        try:
+            iid = int(im.get("id"))
+        except Exception:
+            continue
+        vids = [int(v) for v in (im.get("variant_ids") or []) if str(v).isdigit()]
+        if any(v in targets for v in vids):
+            image_ids.add(iid)
+
+    # Some Shopify products keep variant linkage only on variant.image_id (with empty image.variant_ids).
+    for var in (shop_product.get("variants") or []):
+        try:
+            vid = int(var.get("id") or 0)
+        except Exception:
+            continue
+        if vid not in targets:
+            continue
+        try:
+            vimg = int(var.get("image_id") or 0)
+        except Exception:
+            vimg = 0
+        if vimg:
+            image_ids.add(vimg)
+        try:
+            featured = int(((var.get("featured_image") or {}).get("id")) or 0)
+        except Exception:
+            featured = 0
+        if featured:
+            image_ids.add(featured)
+
+    deleted: list[int] = []
+    if not image_ids:
+        return deleted
+
+    with httpx.Client(timeout=60) as client:
+        for iid in sorted(image_ids):
+            try:
+                url = f"{shopify.base}/products/{product_id}/images/{iid}.json"
+                r = client.delete(url, headers=shopify.headers)
+                if r.status_code in (200, 204):
+                    deleted.append(iid)
+                else:
+                    current_app.logger.warning(
+                        "Failed to delete image %s for product %s: %s %s",
+                        iid, product_id, r.status_code, r.text
+                    )
+            except Exception:
+                current_app.logger.exception("Failed deleting image %s for product %s", iid, product_id)
+    return deleted
+
+
 def _find_printify_product_by_shopify_id(product_id: str) -> dict | None:
     """Find Printify product associated with Shopify product ID.
 
@@ -760,7 +857,7 @@ def api_shopify_upload_manual_mockups(product_id: str):
     if not files:
         return jsonify({"error": "No files uploaded. Use multipart/form-data with one or more 'files' fields."}), 400
 
-    replace_existing = str(request.form.get("replace_existing", "true")).strip().lower() in ("1", "true", "yes", "on")
+    replace_existing = str(request.form.get("replace_existing", "false")).strip().lower() in ("1", "true", "yes", "on")
     out_dir = _product_mockups_dir(product_id)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1132,12 +1229,46 @@ def api_shopify_apply_mockups(product_id: str):
     if not uploaded_images:
         return jsonify({"error": "No images were uploaded", "details": errors}), 500
 
-    # Build images payload for Shopify update: include image ids + variant associations
-    images_payload = []
-    for vid, info in image_map_by_variant.items():
-        images_payload.append({"id": info["image_id"], "variant_ids": [int(vid)]})
+    # Load product so we preserve unrelated images (e.g. lifestyle uploads).
+    try:
+        shop_product = (
+            store.get(SHOPIFY_PRODUCTS_COLLECTION, str(product_id))
+            or store.get(SHOPIFY_PRODUCTS_COLLECTION, product_id)
+            or shopify.get_product(product_id)
+            or {}
+        )
+    except Exception:
+        shop_product = {}
 
-    # Determine default image id to set: prefer provided default_variant_id else first uploaded
+    new_map: dict[int, list[int]] = {}
+    for vid, info in image_map_by_variant.items():
+        iid = int(info["image_id"])
+        new_map.setdefault(iid, []).append(int(vid))
+    replace_variant_ids = {int(v) for v in image_map_by_variant.keys()}
+    deleted_ids = _delete_images_linked_to_variants(product_id, shop_product, replace_variant_ids)
+    if deleted_ids:
+        shop_product = {
+            **shop_product,
+            "images": [
+                im for im in (shop_product.get("images") or [])
+                if int(im.get("id") or 0) not in set(deleted_ids)
+            ],
+        }
+    images_payload = _build_images_payload_preserving_existing(
+        shop_product,
+        new_map,
+        replace_variant_ids=replace_variant_ids,
+    )
+
+    current_hero_id = None
+    try:
+        current_hero_id = int(((shop_product.get("image") or {}).get("id")) or 0) or None
+    except Exception:
+        current_hero_id = None
+    hero_deleted = bool(current_hero_id and current_hero_id in set(deleted_ids or []))
+
+    # Determine default image id to set.
+    # Keep current hero unless explicitly overridden or deleted.
     default_image_id = None
     if default_variant_id:
         try:
@@ -1145,8 +1276,8 @@ def api_shopify_apply_mockups(product_id: str):
             default_image_id = image_map_by_variant.get(dvid, {}).get("image_id")
         except Exception:
             default_image_id = None
-    if not default_image_id:
-        # pick first uploaded as default
+    elif (not current_hero_id) or hero_deleted:
+        # No existing hero (or it was deleted), so pick first uploaded.
         default_image_id = uploaded_images[0]["image_id"]
 
     # Prepare update payload: images list will attach variant_ids; set product.image to default
@@ -1193,6 +1324,7 @@ def api_shopify_apply_generated_mockups(product_id: str):
     except Exception:
         body = {}
     default_variant_id = body.get("default_variant_id")
+    only_stems_raw = body.get("only_stems") or []
 
     # 1) Locate generated mockups folder
     folder = _product_mockups_dir(product_id)
@@ -1210,6 +1342,19 @@ def api_shopify_apply_generated_mockups(product_id: str):
     stem_to_path: dict[str, Path] = {}
     for p in files:
         stem_to_path[_norm_local(p.stem)] = p
+
+    # Optional partial apply mode: only update variants that map to these file stems.
+    only_stems: set[str] = set()
+    if isinstance(only_stems_raw, list):
+        for s in only_stems_raw:
+            text = str(s or "").strip()
+            if not text:
+                continue
+            only_stems.add(_norm_local(Path(text).stem))
+    if only_stems:
+        stem_to_path = {k: v for k, v in stem_to_path.items() if k in only_stems}
+        if not stem_to_path:
+            return jsonify({"error": "No generated mockup files matched only_stems filter"}), 400
 
     # 2) Load Shopify product (cache then live)
     try:
@@ -1348,14 +1493,37 @@ def api_shopify_apply_generated_mockups(product_id: str):
     if not uploaded_images:
         return jsonify({"error": "No images were uploaded", "details": errors}), 500
 
-    # 6) Build images payload for Shopify update
-    images_payload = []
+    # 6) Build images payload while preserving non-mockup images.
+    new_map: dict[int, list[int]] = {}
     for path_str, vids in files_to_upload.items():
         img_id = path_to_image_id.get(path_str)
         if img_id:
-            images_payload.append({"id": img_id, "variant_ids": vids})
+            new_map[int(img_id)] = [int(v) for v in vids]
+    replace_variant_ids = {int(v) for v in variants_to_file.keys()}
+    deleted_ids = _delete_images_linked_to_variants(product_id, shop_product, replace_variant_ids)
+    if deleted_ids:
+        shop_product = {
+            **shop_product,
+            "images": [
+                im for im in (shop_product.get("images") or [])
+                if int(im.get("id") or 0) not in set(deleted_ids)
+            ],
+        }
+    images_payload = _build_images_payload_preserving_existing(
+        shop_product,
+        new_map,
+        replace_variant_ids=replace_variant_ids,
+    )
 
-    # 7) Determine default image id to set
+    current_hero_id = None
+    try:
+        current_hero_id = int(((shop_product.get("image") or {}).get("id")) or 0) or None
+    except Exception:
+        current_hero_id = None
+    hero_deleted = bool(current_hero_id and current_hero_id in set(deleted_ids or []))
+
+    # 7) Determine default image id to set.
+    # Keep current hero unless explicitly overridden or deleted.
     default_image_id = None
     if default_variant_id:
         try:
@@ -1368,8 +1536,8 @@ def api_shopify_apply_generated_mockups(product_id: str):
         except Exception:
             default_image_id = None
 
-    # Prefer the first color in Shopify's option order if available
-    if not default_image_id:
+    # Prefer the first color in Shopify's option order only when we need a new hero.
+    if (not default_image_id) and ((not current_hero_id) or hero_deleted):
         preferred = _preferred_color_order(shop_product)
         if preferred:
             for color in preferred:
@@ -1383,8 +1551,8 @@ def api_shopify_apply_generated_mockups(product_id: str):
                 if default_image_id:
                     break
 
-    # If still none, try to pick a variant flagged as default in Shopify
-    if not default_image_id:
+    # If still none, try to pick a variant flagged as default in Shopify.
+    if (not default_image_id) and ((not current_hero_id) or hero_deleted):
         for v in (shop_product.get("variants") or []):
             try:
                 if v.get("is_default") and int(v.get("id")) in variants_to_file:
@@ -1395,8 +1563,8 @@ def api_shopify_apply_generated_mockups(product_id: str):
             except Exception:
                 continue
 
-    # Fallback: first uploaded image
-    if not default_image_id:
+    # Fallback: first uploaded image only when no current hero remains.
+    if (not default_image_id) and ((not current_hero_id) or hero_deleted):
         default_image_id = uploaded_images[0].get("image_id")
 
     update_payload = {"images": images_payload}
@@ -1584,23 +1752,36 @@ def api_shopify_update_mockups(product_id: str):
 
             # 8) Attach images to variant ids + set featured image
             progress["phase"] = "attaching"
-            images_payload = []
+            new_map: dict[int, list[int]] = {}
             for color_key, image_id in color_variant_image_id_map.items():
                 vids = color_variant_ids.get(color_key, [])
                 if vids:
-                    images_payload.append({"id": int(image_id), "variant_ids": vids})
+                    new_map[int(image_id)] = [int(v) for v in vids]
+            images_payload = _build_images_payload_preserving_existing(
+                shop_product,
+                new_map,
+                replace_variant_ids=variant_ids_to_replace,
+            )
 
-            # determine featured image by preferred color order if available
+            current_hero_id = None
+            try:
+                current_hero_id = int(((shop_product.get("image") or {}).get("id")) or 0) or None
+            except Exception:
+                current_hero_id = None
+            hero_deleted = bool(current_hero_id and current_hero_id in set(images_to_delete or []))
+
+            # determine featured image only when current hero is absent/deleted
             default_image_id = None
-            preferred = _preferred_color_order(shop_product)
-            if preferred:
-                for color in preferred:
-                    key = _normalize_str(color)
-                    if key in color_variant_image_id_map:
-                        default_image_id = color_variant_image_id_map[key]
-                        break
+            if (not current_hero_id) or hero_deleted:
+                preferred = _preferred_color_order(shop_product)
+                if preferred:
+                    for color in preferred:
+                        key = _normalize_str(color)
+                        if key in color_variant_image_id_map:
+                            default_image_id = color_variant_image_id_map[key]
+                            break
 
-            if not default_image_id:
+            if ((not default_image_id) and ((not current_hero_id) or hero_deleted)):
                 # fallback to first variant color in order
                 for var in (shop_product.get("variants") or []):
                     try:
@@ -1611,7 +1792,7 @@ def api_shopify_update_mockups(product_id: str):
                             break
                     except Exception:
                         continue
-            if not default_image_id:
+            if ((not default_image_id) and ((not current_hero_id) or hero_deleted)):
                 default_image_id = uploaded[0].get("image_id")
 
             update_payload = {"images": images_payload}

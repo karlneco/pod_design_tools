@@ -521,6 +521,179 @@ class TestShopifyManualMockupUploads:
         payload = response.get_json()
         assert "error" in payload
 
+    def test_upload_manual_mockups_keeps_existing_by_default(self, client, tmp_path):
+        mockups_root = tmp_path / "designs"
+        existing_dir = mockups_root / "shopify-12345" / "mockups"
+        existing_dir.mkdir(parents=True, exist_ok=True)
+        (existing_dir / "White.png").write_bytes(b"old")
+
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', mockups_root), \
+             patch('app.routes.shopify_api._get_shopify_variants') as mock_variants:
+            mock_variants.return_value = [{"id": 1, "option1": "Black", "is_enabled": True}]
+            response = client.post(
+                '/api/shopify/products/12345/manual_mockups',
+                data={
+                    'files': [(io.BytesIO(b'new'), 'Black.png')],
+                },
+                content_type='multipart/form-data'
+            )
+            assert response.status_code == 200
+            assert (existing_dir / "White.png").exists()
+            assert (existing_dir / "Black.png").exists()
+
+
+@pytest.mark.integration
+class TestShopifyMockupApplyPreservesExistingImages:
+    def test_apply_generated_mockups_preserves_non_target_images(self, client, tmp_path):
+        mockups_root = tmp_path / "designs"
+        mockup_dir = mockups_root / "shopify-12345" / "mockups"
+        mockup_dir.mkdir(parents=True, exist_ok=True)
+        (mockup_dir / "Black.png").write_bytes(b"fake")
+
+        cached_product = {
+            "id": 12345,
+            "variants": [{"id": 11, "option1": "Black", "is_enabled": True}],
+            "images": [
+                {"id": 900, "src": "https://cdn.example.com/lifestyle.webp", "variant_ids": []},
+                {"id": 901, "src": "https://cdn.example.com/old-black.webp", "variant_ids": [11]},
+            ],
+        }
+
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', mockups_root), \
+             patch('app.routes.shopify_api.store') as mock_store, \
+             patch('app.routes.shopify_api.shopify') as mock_shopify:
+            mock_store.get.return_value = cached_product
+            mock_shopify.upload_product_images.return_value = [{"image": {"id": 1001}}]
+            mock_shopify.update_product.return_value = {"id": 12345}
+            mock_shopify.get_product.return_value = cached_product
+
+            response = client.post(
+                '/api/shopify/products/12345/apply_generated_mockups',
+                data=json.dumps({}),
+                content_type='application/json'
+            )
+
+            assert response.status_code == 200
+            update_payload = mock_shopify.update_product.call_args[0][1]
+            image_ids = {int(i.get("id")) for i in (update_payload.get("images") or []) if i.get("id")}
+            assert 900 in image_ids  # existing non-target image is preserved
+            assert 1001 in image_ids  # newly uploaded mockup is included
+
+    def test_apply_generated_mockups_keeps_existing_hero_when_not_replaced(self, client, tmp_path):
+        mockups_root = tmp_path / "designs"
+        mockup_dir = mockups_root / "shopify-12345" / "mockups"
+        mockup_dir.mkdir(parents=True, exist_ok=True)
+        (mockup_dir / "Black.png").write_bytes(b"fake")
+
+        cached_product = {
+            "id": 12345,
+            "image": {"id": 900, "src": "https://cdn.example.com/hero.webp"},
+            "variants": [{"id": 11, "option1": "Black", "is_enabled": True}],
+            "images": [
+                {"id": 900, "src": "https://cdn.example.com/hero.webp", "variant_ids": []},
+                {"id": 901, "src": "https://cdn.example.com/old-black.webp", "variant_ids": [11]},
+            ],
+        }
+
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', mockups_root), \
+             patch('app.routes.shopify_api.store') as mock_store, \
+             patch('app.routes.shopify_api.shopify') as mock_shopify:
+            mock_store.get.return_value = cached_product
+            mock_shopify.upload_product_images.return_value = [{"image": {"id": 1001}}]
+            mock_shopify.update_product.return_value = {"id": 12345}
+            mock_shopify.get_product.return_value = cached_product
+
+            response = client.post(
+                '/api/shopify/products/12345/apply_generated_mockups',
+                data=json.dumps({}),
+                content_type='application/json'
+            )
+            assert response.status_code == 200
+            update_payload = mock_shopify.update_product.call_args[0][1]
+            assert "image" not in update_payload  # do not force-reset hero
+
+    def test_apply_generated_mockups_deletes_old_variant_image_via_variant_image_id(self, client, tmp_path):
+        mockups_root = tmp_path / "designs"
+        mockup_dir = mockups_root / "shopify-12345" / "mockups"
+        mockup_dir.mkdir(parents=True, exist_ok=True)
+        (mockup_dir / "Black.png").write_bytes(b"fake")
+
+        cached_product = {
+            "id": 12345,
+            "variants": [{"id": 11, "option1": "Black", "is_enabled": True, "image_id": 901}],
+            "images": [
+                {"id": 900, "src": "https://cdn.example.com/lifestyle.webp", "variant_ids": []},
+                {"id": 901, "src": "https://cdn.example.com/old-black.webp", "variant_ids": []},
+            ],
+        }
+
+        class _Resp:
+            def __init__(self, code=200):
+                self.status_code = code
+                self.text = ""
+
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', mockups_root), \
+             patch('app.routes.shopify_api.store') as mock_store, \
+             patch('app.routes.shopify_api.shopify') as mock_shopify, \
+             patch('app.routes.shopify_api.httpx.Client') as mock_httpx_client:
+            mock_store.get.return_value = cached_product
+            mock_shopify.upload_product_images.return_value = [{"image": {"id": 1001}}]
+            mock_shopify.update_product.return_value = {"id": 12345}
+            mock_shopify.get_product.return_value = cached_product
+            mock_shopify.base = "https://test.myshopify.com/admin/api/2024-10"
+            mock_shopify.headers = {"X-Shopify-Access-Token": "x"}
+
+            client_ctx = MagicMock()
+            client_ctx.delete.return_value = _Resp(200)
+            mock_httpx_client.return_value.__enter__.return_value = client_ctx
+
+            response = client.post(
+                '/api/shopify/products/12345/apply_generated_mockups',
+                data=json.dumps({}),
+                content_type='application/json'
+            )
+
+            assert response.status_code == 200
+            delete_calls = client_ctx.delete.call_args_list
+            assert any('/images/901.json' in str(c) for c in delete_calls)
+
+    def test_apply_generated_mockups_only_stems_limits_updates(self, client, tmp_path):
+        mockups_root = tmp_path / "designs"
+        mockup_dir = mockups_root / "shopify-12345" / "mockups"
+        mockup_dir.mkdir(parents=True, exist_ok=True)
+        (mockup_dir / "Black.png").write_bytes(b"black")
+        (mockup_dir / "White.png").write_bytes(b"white")
+
+        cached_product = {
+            "id": 12345,
+            "variants": [
+                {"id": 11, "option1": "Black", "is_enabled": True},
+                {"id": 12, "option1": "White", "is_enabled": True},
+            ],
+            "images": [],
+        }
+
+        with patch('app.routes.shopify_api.Config.PRODUCT_MOCKUPS_DIR', mockups_root), \
+             patch('app.routes.shopify_api.store') as mock_store, \
+             patch('app.routes.shopify_api.shopify') as mock_shopify, \
+             patch('app.routes.shopify_api._delete_images_linked_to_variants') as mock_delete:
+            mock_store.get.return_value = cached_product
+            mock_delete.return_value = []
+            mock_shopify.upload_product_images.return_value = [{"image": {"id": 1001}}]
+            mock_shopify.update_product.return_value = {"id": 12345}
+            mock_shopify.get_product.return_value = cached_product
+
+            response = client.post(
+                '/api/shopify/products/12345/apply_generated_mockups',
+                data=json.dumps({"only_stems": ["Black"]}),
+                content_type='application/json'
+            )
+            assert response.status_code == 200
+            # Only one upload for Black
+            assert mock_shopify.upload_product_images.call_count == 1
+            uploaded_path = mock_shopify.upload_product_images.call_args[0][1][0]
+            assert uploaded_path.endswith("Black.png")
+
 
 @pytest.mark.integration
 class TestShopifyLifestyleArtDirection:

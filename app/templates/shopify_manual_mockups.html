@@ -35,7 +35,7 @@
     <input type="file" id="files" name="files" accept=".png,.jpg,.jpeg,.webp,image/*" multiple required/>
   </label>
   <label style="display:flex;gap:.5rem;align-items:center;">
-    <input type="checkbox" id="replaceExisting" name="replace_existing" checked/>
+    <input type="checkbox" id="replaceExisting" name="replace_existing"/>
     <span>Replace existing saved mockups first</span>
   </label>
   <div class="row" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
@@ -91,11 +91,18 @@ document.getElementById('manualForm').addEventListener('submit', async (e) => {
     const uploadData = await parseJsonOrError(uploadRes);
     if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
 
+    const onlyStems = Array.from(new Set(
+      (uploadData.saved || [])
+        .map(x => String((x && (x.saved_as || x.original)) || '').split('/').pop() || '')
+        .map(name => name.replace(/\.[^/.]+$/, '').trim())
+        .filter(Boolean)
+    ));
+
     status.textContent = 'Syncing to Shopify...';
     const syncRes = await fetch(`/api/shopify/products/${encodeURIComponent(productId)}/apply_generated_mockups`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({})
+      body: JSON.stringify({ only_stems: onlyStems })
     });
     const syncData = await parseJsonOrError(syncRes);
     if (!syncRes.ok) throw new Error(syncData.error || 'Shopify sync failed');
